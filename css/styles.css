@@ -1,0 +1,248 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+
+body {
+    background: url('https://raw.githubusercontent.com/WILLIAM-THI/StyleMe/main/assets/background01.jpg') no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 100vh;
+    padding: 0 10%; 
+}
+
+/* DESKTOP VIEW DESIGN */
+.auth-wrapper {
+    background: transparent;
+    width: 100%;
+    max-width: 540px;
+}
+
+.hero-side { display: none; }
+
+.form-side {
+    width: 100%;
+    padding: 50px 40px;
+    background: rgba(255, 255, 255, 0.4); 
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(12px); 
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+.header-section { text-align: center; margin-bottom: 45px; }
+.header-section h1 { 
+    font-size: 56px; 
+    font-weight: 500; 
+    color: #000000; 
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    line-height: 1.1;
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+}
+.header-section p { 
+    font-size: 26px; 
+    color: #000000; 
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 400;
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.8);
+}
+
+.form-group { 
+    display: flex; 
+    align-items: center; 
+    margin-bottom: 25px; 
+    width: 100%; 
+}
+
+.form-group label { 
+    width: 110px; 
+    font-size: 20px; 
+    color: #000000; 
+    font-weight: 400;
+    margin-bottom: 0;
+    padding-right: 15px;
+    text-align: right;
+    flex-shrink: 0;
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9);
+}
+
+.email-wrapper { 
+    flex-grow: 1; 
+    position: relative; 
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.password-wrapper { 
+    flex-grow: 1; 
+    position: relative; 
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.email-wrapper input {
+        width: 100%;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.5); 
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 25px; 
+    font-size: 16px;
+    color: #000000;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding: 12px 50px 12px 20px;
+    background: rgba(255, 255, 255, 0.5); 
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 25px; 
+    font-size: 16px;
+    color: #000000;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.email-wrapper input:focus,
+.password-wrapper input:focus { 
+    background: rgba(255, 255, 255, 0.8);
+    border-color: #000000; 
+}
+
+.toggle-password {
+    position: absolute;
+    right: 18px; 
+    top: 50%;
+    transform: translateY(-50%); 
+    cursor: pointer;
+    z-index: 999; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; 
+    height: 24px;
+}
+
+.toggle-password svg {
+    width: 100%;
+    height: 100%;
+    color: #333333; 
+    transition: color 0.2s ease;
+}
+
+.toggle-password:hover svg {
+    color: #000000;
+}
+
+
+#authForm {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.btn-signin {
+    align-self: flex-end; 
+    width: auto;
+    min-width: 160px;
+    padding: 12px 24px;
+    background: #474b54; 
+    color: #4382dc; 
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: 400;
+    cursor: pointer;
+    margin-top: 5px;
+    transition: background 0.2s;
+}
+.btn-signin:hover { background: #383b42; }
+
+
+.signup-text { 
+    display: flex;
+    justify-content: flex-end; 
+    align-items: center;
+    margin-top: 35px; 
+    font-size: 16px; 
+    color: #000000; 
+    text-align: right;
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9);
+}
+
+.btn-signup { 
+    width: auto;
+    min-width: 160px;
+    padding: 12px 24px;
+    background: #474b54;
+    color: #79f7aa; 
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: 400;
+    cursor: pointer;
+    margin-left: 12px;
+    transition: background 0.2s;
+}
+.btn-signup:hover { background: #383b42; }
+
+.message { margin-top: 20px; font-size: 16px; font-weight: 600; text-align: right; }
+
+/* MOBILE VIEW DESIGN */
+@media (max-width: 768px) {
+    body { 
+        padding: 0; 
+        background: url('https://raw.githubusercontent.com/WILLIAM-THI/StyleMe/main/assets/background01.jpg') no-repeat center center fixed;
+        background-size: cover;
+        align-items: flex-start;
+        justify-content: center;
+    }
+    
+    .auth-wrapper {
+        max-width: 100%;
+        min-height: 100vh;
+    }
+    
+    .form-side {
+        border-radius: 0;
+        border: none;
+        min-height: 100vh;
+        padding: 60px 24px 40px 24px;
+        background: transparent; 
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    
+    .header-section { margin-bottom: 200px; } 
+    .header-section h1 { font-size: 64px; } 
+    .header-section p { font-size: 32px; }
+    
+    .form-group label { font-size: 24px; padding-right: 20px; }
+     
+    .email-wrapper input { 
+        font-size: 18px; 
+        background: rgba(255, 255, 255, 0.4); 
+        padding: 12px 20px;
+    }
+    
+    .password-wrapper input { 
+        font-size: 18px; 
+        background: rgba(255, 255, 255, 0.4); 
+        padding: 12px 50px 12px 20px;
+    }
+
+    
+    .btn-signin { font-size: 20px; min-width: 160px; padding: 12px 24px; }
+    .signup-text { font-size: 18px; }
+    .btn-signup { font-size: 20px; min-width: 160px; padding: 12px 24px; }
+}

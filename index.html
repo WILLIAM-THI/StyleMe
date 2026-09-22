@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style Me - AI Stylist</title>
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <div class="auth-wrapper">
+        
+        <!-- Right Image Frame -->
+        <div class="hero-side">
+            <h2>STYLE ME</h2>
+            <p>AI STYLIST</p>
+        </div>
+
+        <!-- Mobile/Left Frame -->
+        <div class="form-side">
+            <div class="header-section">
+                <h1>STYLE ME</h1>
+                <p>AI STYLIST</p>
+            </div>
+
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="email-wrapper">
+                        <input type="email" id="email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" required>
+                        <span class="toggle-password" id="eyeIcon">
+                            <svg id="eyeSvg" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+
+                <button type="button" class="btn-signin" onclick="handleAuth('signin')">Sign in</button>
+            </form>
+
+
+            <div class="signup-text">
+                Don't have an account? <button type="button" class="btn-signup" onclick="handleAuth('signup')">Sign up</button>
+            </div>
+            
+            <div id="responseMessage" class="message"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const eyeIcon = document.getElementById('eyeIcon');
+        const eyeSvg = document.getElementById('eyeSvg');
+        const passwordInput = document.getElementById('password');
+
+        const openEyePath = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        `;
+
+        const closedEyePath = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12c1.391 4.178 5.328 7.178 9.966 7.178 1.488 0 2.89-.304 4.161-.854M17.067 17.067A10.436 10.436 0 0 1 12 19.5c-4.638 0-8.573-3.007-9.963-7.178a1.012 1.012 0 0 1 0-.639 10.42 10.42 0 0 1 2.283-3.402M12 9.75A2.25 2.25 0 0 0 9.75 12m0 0a2.25 2.25 0 0 0 2.25 2.25m-2.25-2.25L3 3m3.06 3.06l1.83 1.83M12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639a10.575 10.575 0 0 1-2.283 3.402m0 0l-2.036-2.036M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        `;
+
+        eyeIcon.addEventListener('click', () => {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            
+            eyeSvg.innerHTML = isPassword ? closedEyePath : openEyePath;
+        });
+
+
+        async function handleAuth(action) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const msgDiv = document.getElementById('responseMessage');
+
+            if(!email || !password) {
+                msgDiv.style.color = '#e03131';
+                msgDiv.innerText = "Please complete fields.";
+                return;
+            }
+
+            const endpoint = action === 'signin' ? '/api/login' : '/api/register';
+            
+            try {
+                const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    msgDiv.style.color = action === 'signin' ? '#4382dc' : '#79f7aa';
+                    msgDiv.innerText = data.message;
+                    if(action === 'signin') {
+                        localStorage.setItem("user_token", data.token);
+                        setTimeout(() => window.location.href = "dashboard.html", 1500);
+                    }
+                } else {
+                    msgDiv.style.color = '#e03131';
+                    msgDiv.innerText = data.detail || "Authentication error.";
+                }
+            } catch (error) {
+                msgDiv.style.color = '#e03131';
+                msgDiv.innerText = "Connection to backend failed.";
+            }
+        }
+    </script>
+</body>
+</html>
