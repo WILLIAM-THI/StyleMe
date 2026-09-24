@@ -1,0 +1,138 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+body { background: #1e1e1e; color: #ffffff; min-height: 100vh; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+/* ---------- MOBILE (default) ---------- */
+.dashboard {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 20px 16px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Header: menu button left, settings right */
+.header { position: relative; display: flex; justify-content: space-between; align-items: center; z-index: 30; }
+.menu-btn { display: flex; align-items: center; gap: 8px; font-size: 30px; }
+.menu-btn svg, .menu-close svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.settings-btn { font-size: 36px; line-height: 1; color: #dddddd; }
+
+/* Menu overlay */
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.backdrop.open { opacity: 1; pointer-events: auto; }
+.menu {
+    position: absolute; top: -14px; left: -14px; z-index: 40;
+    width: min(330px, 85vw);
+    padding: 14px 24px 10px;
+    background: rgba(58, 58, 58, 0.96);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 28px;
+    display: none; flex-direction: column;
+}
+.menu.open { display: flex; }
+.menu a { font-size: 24px; padding: 12px 0; line-height: 1.2; }
+.menu a.current { font-size: 30px; color: #8c8c8c; padding-top: 6px; }
+.menu-close { align-self: center; padding: 10px 24px; }
+
+/* Tiles */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.tile {
+    position: relative; overflow: hidden;
+    aspect-ratio: 6 / 5;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    padding: 14px 10px;
+    text-align: center; font-size: 19px; line-height: 1.15;
+    background: #333333;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    transition: transform 0.15s, background 0.15s;
+}
+.tile:hover { background: #303030; }
+.tile:active { transform: scale(0.98); }
+.tile:focus-visible, .menu a:focus-visible, .menu-btn:focus-visible, .settings-btn:focus-visible { outline: 2px solid #79f7aa; outline-offset: 2px; }
+.tile-icon { position: absolute; top: 16px; left: 0; right: 0; font-size: 56px; line-height: 1; }
+
+/* Weather tile */
+.tile-weather .tile-icon { left: 16px; right: auto; font-size: 52px; }
+.wx-temp { position: absolute; top: 12px; right: 16px; font-size: 30px; font-weight: 300; }
+.wx-desc { display: block; margin-top: 4px; font-size: 13px; color: #c4c4c4; }
+.tile-weather[data-theme="clear"] { background: linear-gradient(160deg, #4a4526, #262626); }
+.tile-weather[data-theme="night"] { background: linear-gradient(160deg, #1f2444, #262626); }
+.tile-weather[data-theme="cloud"] { background: linear-gradient(160deg, #37404c, #262626); }
+.tile-weather[data-theme="rain"]  { background: linear-gradient(160deg, #1d3448, #262626); }
+.tile-weather[data-theme="snow"]  { background: linear-gradient(160deg, #40505c, #262626); }
+.tile-weather[data-theme="storm"] { background: linear-gradient(160deg, #35284f, #262626); }
+.tile-weather[data-theme="fog"]   { background: linear-gradient(160deg, #3d3d3d, #262626); }
+
+/* Saved outfits: stacked cards */
+.carousel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.stage { position: relative; }
+.stack { position: relative; margin-right: 44px; aspect-ratio: 5 / 6; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.card {
+    --o: 0;                                   /* how far back in the stack: 0 = front */
+    position: absolute; inset: 0; padding: 0; overflow: hidden; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(#e9eaee, #c9ccd3);
+    border: none; border-radius: 16px;
+    transform-origin: right center;
+    transform: translateX(calc(var(--o) * 20px)) scale(calc(1 - var(--o) * 0.05));
+    transition: transform 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+}
+.card[data-pos="behind"] { filter: brightness(0.7); }
+.card[data-pos="far"]    { opacity: 0; pointer-events: none; filter: brightness(0.7); }
+.card[data-pos="gone"]   { opacity: 0; pointer-events: none; transform: translateX(-110%); }
+.card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
+.card-placeholder { font-size: 96px; opacity: 0.45; }
+
+/* Always-visible label that links to the Saved Outfits page */
+.stack-caption {
+    position: absolute; z-index: 20; bottom: 10px;
+    left: calc((100% - 44px) / 2); transform: translateX(-50%);   /* centred on the front card */
+    padding: 6px 14px; white-space: nowrap;
+    font-size: 22px; font-weight: 600; color: #111111;
+    text-shadow:
+        -2px -2px 0 #fff, 0 -2px 0 #fff, 2px -2px 0 #fff,
+        -2px 0 0 #fff, 2px 0 0 #fff,
+        -2px 2px 0 #fff, 0 2px 0 #fff, 2px 2px 0 #fff,
+        0 0 10px #fff;
+}
+.stack-caption:focus-visible, .card:focus-visible { outline: 2px solid #79f7aa; outline-offset: 2px; }
+
+.dots { display: flex; justify-content: center; gap: 10px; }
+.dot { width: 12px; height: 12px; padding: 0; border: 2px solid #ffffff; border-radius: 50%; }
+.dot.active { background: #ffffff; }
+
+/* Fullscreen outfit viewer */
+.viewer { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, 0.95); cursor: pointer; }
+.viewer[hidden] { display: none; }
+.viewer img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.viewer-placeholder { font-size: 160px; opacity: 0.5; }
+.viewer-close { position: absolute; top: 14px; right: 20px; font-size: 44px; line-height: 1; color: #ffffff; }
+
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+
+/* ---------- DESKTOP: everything on the right, carousel on the left ---------- */
+@media (min-width: 900px) {
+    .dashboard {
+        max-width: none; height: 100vh; padding: 36px 48px;
+        display: grid;
+        grid-template-columns: 1fr 480px;
+        grid-template-rows: auto 1fr;
+        grid-template-areas: "carousel header" "carousel tiles";
+        column-gap: 56px; row-gap: 24px;
+    }
+    .header { grid-area: header; }
+    .tiles { grid-area: tiles; align-content: start; }
+    .carousel { grid-area: carousel; min-height: 0; }
+    .stage { flex: 1; min-height: 0; display: flex; }
+    .stack { flex: 1; aspect-ratio: auto; }
+}
+
+   img.tile-icon {
+       left: 50%; right: auto;
+       transform: translateX(-50%);
+       width: auto; height: 70%; max-width: 85%;
+       object-fit: contain;
+   }

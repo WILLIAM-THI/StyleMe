@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
 # Allowed values for the clothing traits. The AI's answers should be mapped onto these.
-CATEGORIES = ["top", "bottom", "dress", "outerwear", "shoes", "accessory"]
+CATEGORIES = ["short_sleeve_top", "long_sleeve_top", "pants", "shorts", "skirt", "dress", "outerwear", "shoes", "accessory"]
 COLOURS = [
     "black", "white", "grey", "beige", "brown", "red", "orange",
     "yellow", "green", "blue", "navy", "purple", "pink", "multicolour",
@@ -79,7 +79,6 @@ class Outfit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    name: Mapped[str] = mapped_column(String(100))
     prompt: Mapped[str | None] = mapped_column(Text)        # what the user asked for, e.g. "job interview, rainy day"
     description: Mapped[str | None] = mapped_column(Text)   # the AI's explanation of the look
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
