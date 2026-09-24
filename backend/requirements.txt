@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy>=2.0
+bcrypt
+PyJWT
+python-dotenv
+pydantic[email]
+psycopg2-binary   # driver for Azure Database for PostgreSQL
+# pyodbc          # only if you choose Azure SQL Database instead (also needs Microsoft's ODBC Driver 18)
