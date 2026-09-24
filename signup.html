@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Style Me</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="signup-page">
+
+    <div class="auth-wrapper">
+        <div class="form-side">
+
+            <div class="header-section">
+                <h1>STYLE ME</h1>
+                <p>AI STYLIST</p>
+                <h2 class="page-title">SIGN UP</h2>
+            </div>
+
+            <form id="authForm" novalidate>
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <div class="field-wrapper">
+                        <input type="text" id="name" name="name" placeholder="Required" autocomplete="name" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="field-wrapper">
+                        <input type="email" id="email" name="email" placeholder="Required" autocomplete="email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="field-wrapper">
+                        <input type="password" id="password" name="password" class="has-toggle" placeholder="Required" autocomplete="new-password" required>
+                        <span class="toggle-password" id="eyeIcon" role="button" tabindex="0" aria-label="Show password">
+                            <svg id="eyeSvg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-signin btn-submit">Submit</button>
+            </form>
+
+            <div id="responseMessage" class="message" role="status"></div>
+
+            <p class="back-link">Already have an account? <a href="index.html">Sign in</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Change this one line when your backend moves off your own computer
+        const API_BASE = 'http://127.0.0.1:8000';
+
+        // ----- Show / hide password -----
+        const eyeIcon = document.getElementById('eyeIcon');
+        const eyeSvg = document.getElementById('eyeSvg');
+        const passwordInput = document.getElementById('password');
+
+        const openEyePath = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        `;
+
+        const closedEyePath = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12c1.391 4.178 5.328 7.178 9.966 7.178 1.488 0 2.89-.304 4.161-.854M17.067 17.067A10.436 10.436 0 0 1 12 19.5c-4.638 0-8.573-3.007-9.963-7.178a1.012 1.012 0 0 1 0-.639 10.42 10.42 0 0 1 2.283-3.402M12 9.75A2.25 2.25 0 0 0 9.75 12m0 0a2.25 2.25 0 0 0 2.25 2.25m-2.25-2.25L3 3m3.06 3.06l1.83 1.83M12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639a10.575 10.575 0 0 1-2.283 3.402m0 0l-2.036-2.036M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        `;
+
+        function togglePassword() {
+            const isHidden = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isHidden ? 'text' : 'password');
+            eyeSvg.innerHTML = isHidden ? closedEyePath : openEyePath;
+            eyeIcon.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+        }
+
+        eyeIcon.addEventListener('click', togglePassword);
+        // Let keyboard users press Enter or Space on the icon too
+        eyeIcon.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                togglePassword();
+            }
+        });
+
+        const form = document.getElementById('authForm');
+        const msgDiv = document.getElementById('responseMessage');
+
+        function showMessage(text, type) {
+            msgDiv.className = 'message ' + type;   // "error" or "success"
+            msgDiv.innerText = text;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault(); // stop the browser reloading the page
+
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!name || !email || !password) {
+                showMessage('Please fill in name, email and password.', 'error');
+                return;
+            }
+            if (!/^\S+@\S+\.\S+$/.test(email)) {
+                showMessage('Please enter a valid email address.', 'error');
+                return;
+            }
+            if (password.length < 8) {
+                showMessage('Password must be at least 8 characters.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage(data.message || 'Account created!', 'success');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                } else {
+                    // FastAPI sends errors in data.detail (sometimes a list, sometimes text)
+                    const detail = typeof data.detail === 'string' ? data.detail : 'Please check your details and try again.';
+                    showMessage(detail, 'error');
+                }
+            } catch (error) {
+                showMessage('Connection to backend failed.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

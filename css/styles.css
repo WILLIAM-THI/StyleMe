@@ -10,7 +10,7 @@ body {
     padding: 0 10%; 
 }
 
-/* DESKTOP VIEW DESIGN */
+/* ----- SIGNUP + LOGIN PAGE - DESKTOP VIEW ----- */
 .auth-wrapper {
     background: transparent;
     width: 100%;
@@ -89,7 +89,7 @@ body {
 }
 
 .email-wrapper input {
-        width: 100%;
+    width: 100%;
     padding: 12px 20px;
     background: rgba(255, 255, 255, 0.5); 
     border: 1px solid rgba(0, 0, 0, 0.2);
@@ -197,7 +197,7 @@ body {
 
 .message { margin-top: 20px; font-size: 16px; font-weight: 600; text-align: right; }
 
-/* MOBILE VIEW DESIGN */
+/* ----- LOGIN PAGE - MOBILE VIEW ----- */
 @media (max-width: 768px) {
     body { 
         padding: 0; 
@@ -245,4 +245,130 @@ body {
     .btn-signin { font-size: 20px; min-width: 160px; padding: 12px 24px; }
     .signup-text { font-size: 18px; }
     .btn-signup { font-size: 20px; min-width: 160px; padding: 12px 24px; }
+}
+
+
+
+/* ----- Sign up: desktop ----- */
+.signup-page .header-section { margin-bottom: 35px; }
+
+.page-title {
+    font-size: 40px;
+    font-weight: 400;
+    color: #000000;
+    letter-spacing: 2px;
+    margin-top: 25px;
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.8);
+}
+
+/* One class for all four sign up inputs */
+.field-wrapper {
+    flex-grow: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.field-wrapper input {
+    width: 100%;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 25px;
+    font-size: 16px;
+    color: #000000;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.field-wrapper input::placeholder { color: #666666; }
+
+/* Extra room on the right of the password box for the eye icon */
+.field-wrapper input.has-toggle { padding-right: 50px; }
+
+.field-wrapper input:focus {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: #000000;
+}
+
+/* Submit uses the .btn-signin shape with green text */
+.btn-submit { color: #79f7aa; }
+
+.message.error   { color: #e03131; }
+.message.success { color: #1a8f4c; }
+
+.back-link {
+    margin-top: 30px;
+    font-size: 16px;
+    color: #000000;
+    text-align: right;
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.9);
+}
+.back-link a { color: #000000; font-weight: 600; }
+
+/* ----- Sign up: mobile ----- */
+@media (max-width: 768px) {
+    .signup-page { background: #1e1e1e; }
+
+    .signup-page .form-side { padding: 40px 24px; min-height: auto; }
+
+    .signup-page .header-section { margin-bottom: 30px; }
+
+    .signup-page .header-section h1 {
+        font-size: 32px;
+        font-weight: 400;
+        color: #ffffff;
+        letter-spacing: 1px;
+        text-shadow: none;
+        margin-bottom: 2px;
+    }
+
+    .signup-page .header-section p {
+        font-size: 16px;
+        color: #ffffff;
+        letter-spacing: 1px;
+        text-shadow: none;
+    }
+
+    .page-title {
+        font-size: 64px;
+        color: #ffffff;
+        letter-spacing: 0;
+        margin-top: 20px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    .signup-page .form-group { margin-bottom: 22px; }
+    .signup-page .form-group label {
+        width: 108px;
+        font-size: 20px;
+        color: #ffffff;
+        padding-right: 12px;
+        text-shadow: none;
+    }
+
+    .field-wrapper input {
+        background: #d3d3d3;
+        border: none;
+        font-size: 18px;
+    }
+    .field-wrapper input:focus {
+        background: #ffffff;
+        box-shadow: 0 0 0 2px #79f7aa;
+    }
+
+    .btn-submit {
+        background: #333333;
+        border: none;
+        font-size: 22px;
+        min-width: 160px;
+    }
+    .btn-submit:hover { background: #3d3d3d; }
+
+    .message.error   { color: #ff8787; }
+    .message.success { color: #79f7aa; }
+
+    .back-link { color: #ffffff; text-shadow: none; }
+    .back-link a { color: #79f7aa; }
 }
