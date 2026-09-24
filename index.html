@@ -23,7 +23,7 @@
                 <p>AI STYLIST</p>
             </div>
 
-            <form id="authForm">
+            <form id="authForm" novalidate onsubmit="event.preventDefault(); handleAuth('signin');">
                 <div class="form-group">
                     <label for="email">Email</label>
                     <div class="email-wrapper">
@@ -44,7 +44,7 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn-signin" onclick="handleAuth('signin')">Sign in</button>
+                <button type="submit" class="btn-signin">Sign in</button>
             </form>
 
 
@@ -111,7 +111,9 @@
                     }
                 } else {
                     msgDiv.style.color = '#e03131';
-                    msgDiv.innerText = data.detail || "Authentication error.";
+                    msgDiv.innerText = typeof data.detail === 'string'
+                        ? data.detail
+                        : "Please enter a valid email and password.";
                 }
             } catch (error) {
                 msgDiv.style.color = '#e03131';
