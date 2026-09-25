@@ -86,3 +86,43 @@ def get_current_user(
 @app.get("/api/me")
 def me(user: models.User = Depends(get_current_user)):
     return {"id": user.id, "name": user.name, "email": user.email}
+
+# ---------- Account settings ----------
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, max_length=72)
+ 
+ 
+class DeleteAccountRequest(BaseModel):
+    password: str
+ 
+ 
+@app.put("/api/me/password")
+def change_password(
+    body: ChangePasswordRequest,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not security.verify_password(body.old_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Old password is incorrect.")
+    if len(body.new_password.encode("utf-8")) > 72:  # bcrypt's limit
+        raise HTTPException(status_code=400, detail="Password is too long.")
+ 
+    user.password_hash = security.hash_password(body.new_password)
+    db.commit()
+    return {"message": "Password updated."}
+ 
+ 
+@app.delete("/api/me")
+def delete_account(
+    body: DeleteAccountRequest,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not security.verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Password is incorrect.")
+ 
+    # Also deletes their clothing items and outfits
+    db.delete(user)
+    db.commit()
+    return {"message": "Your account has been deleted."}

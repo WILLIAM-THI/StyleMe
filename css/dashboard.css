@@ -136,3 +136,65 @@ a { color: inherit; text-decoration: none; }
        width: auto; height: 70%; max-width: 85%;
        object-fit: contain;
    }
+
+/* SETTINGS */
+
+.settings { display: flex; flex-direction: column; gap: 28px; }
+
+#pwForm { display: flex; flex-direction: column; gap: 14px; }
+.field-row { display: flex; align-items: flex-start; gap: 12px; }
+.field-row label { width: 110px; flex-shrink: 0; padding-top: 10px; text-align: right; font-size: 22px; }
+.field-stack { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.pill {
+    width: 100%; padding: 12px 20px;
+    background: #d3d3d3; color: #000000;
+    border: none; border-radius: 25px;
+    font-size: 17px; outline: none;
+}
+.pill::placeholder { color: #666666; }
+.pill:focus { background: #ffffff; box-shadow: 0 0 0 2px #79f7aa; }
+
+.btn { min-width: 160px; padding: 12px 24px; background: #333333; border-radius: 25px; font-size: 20px; transition: background 0.2s; }
+.btn:hover { background: #3d3d3d; }
+.btn:focus-visible { outline: 2px solid #79f7aa; outline-offset: 2px; }
+.btn-save { align-self: flex-end; color: #79f7aa; }
+.btn-danger { color: #ff6b6b; }
+
+.msg { min-height: 1.3em; font-size: 15px; text-align: right; }
+.msg.error { color: #ff8787; }
+.msg.success { color: #79f7aa; }
+
+/* On/off switches: green = on, red = off */
+.toggles { display: flex; flex-direction: column; gap: 18px; }
+.toggle-row { display: flex; justify-content: flex-end; align-items: center; gap: 22px; font-size: 22px; }
+.switch { position: relative; width: 96px; height: 42px; flex-shrink: 0; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.slider { position: absolute; inset: 0; border-radius: 21px; background: #ff6b6b; transition: background 0.2s; pointer-events: none; }
+.slider::before { content: ''; position: absolute; top: 3px; left: 3px; width: 36px; height: 36px; border-radius: 50%; background: #333333; transition: transform 0.2s; }
+.switch input:checked + .slider { background: #9fe3b5; }
+.switch input:checked + .slider::before { transform: translateX(54px); }
+.switch input:focus-visible + .slider { outline: 2px solid #ffffff; outline-offset: 3px; }
+
+.delete-row { display: flex; justify-content: flex-end; }
+
+/* Delete account confirmation */
+dialog.confirm { margin: auto; width: min(380px, 90vw); padding: 24px; color: #ffffff; background: #2a2a2a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 24px; }
+dialog.confirm::backdrop { background: rgba(0, 0, 0, 0.75); }
+dialog.confirm h2 { margin-bottom: 10px; font-size: 24px; font-weight: 500; }
+dialog.confirm p { margin-bottom: 14px; font-size: 16px; line-height: 1.4; color: #cccccc; }
+dialog.confirm .msg { margin: 8px 0 0; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 14px; }
+.confirm-actions .btn { min-width: 0; padding: 10px 20px; font-size: 18px; }
+
+@media (min-width: 900px) {
+    /* Settings on right side */
+    .settings { grid-area: tiles; min-height: 0; overflow-y: auto; padding: 4px 6px 4px 0; }
+}
+
+/* Mobile view no saved outfits carousel */
+body.settings-page .carousel { display: none; }
+
+@media (min-width: 900px) {
+    body.settings-page .carousel { display: flex; }
+}

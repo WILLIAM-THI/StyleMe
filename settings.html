@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script>
+        // Not logged in? Go back to the login page straight away.
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body class="settings-page">
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                Settings
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="settings.html" class="current" aria-current="page">Settings</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="wardrobe.html">My Wardrobe</a>
+                <a href="weather-outfit.html">Generate Weather Based Outfit</a>
+                <a href="generate-outfit.html">Generate Outfit</a>
+                <a href="style-me.html">Style Me</a>
+                <a href="saved-outfits.html">Saved Outfits</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings" aria-current="page">&#9881;&#xFE0E;</a>
+        </header>
+
+        <section class="settings">
+
+            <form id="pwForm" novalidate>
+                <div class="field-row">
+                    <label for="oldPw">Password</label>
+                    <div class="field-stack">
+                        <input class="pill" type="password" id="oldPw" placeholder="Old Password" autocomplete="current-password">
+                        <input class="pill" type="password" id="newPw" placeholder="New Password" autocomplete="new-password">
+                        <input class="pill" type="password" id="confirmPw" placeholder="Confirm New Password" autocomplete="new-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-save">Save</button>
+                <p class="msg" id="pwMsg" role="status"></p>
+            </form>
+
+            <div class="toggles">
+                <div class="toggle-row">
+                    <span id="locLabel">Location</span>
+                    <label class="switch"><input type="checkbox" id="locToggle" role="switch" aria-labelledby="locLabel"><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <span id="notifLabel">Notifications</span>
+                    <label class="switch"><input type="checkbox" id="notifToggle" role="switch" aria-labelledby="notifLabel"><span class="slider"></span></label>
+                </div>
+                <p class="msg" id="prefMsg" role="status"></p>
+            </div>
+
+            <div class="delete-row">
+                <button type="button" class="btn btn-danger" id="deleteBtn">Delete Account</button>
+            </div>
+
+        </section>
+
+        <section class="carousel" aria-label="Saved outfits">
+            <div class="stage">
+                <div class="stack" id="stack"></div>
+                <a class="stack-caption" href="saved-outfits.html">Saved Outfits</a>
+            </div>
+            <div class="dots" id="dots"></div>
+        </section>
+
+    </main>
+
+    <dialog class="confirm" id="deleteDialog" aria-labelledby="deleteTitle">
+        <form id="deleteForm" novalidate>
+            <h2 id="deleteTitle">Delete account?</h2>
+            <p>This permanently deletes your account, wardrobe and saved outfits. Enter your password to confirm.</p>
+            <input class="pill" type="password" id="deletePw" placeholder="Password" autocomplete="current-password">
+            <p class="msg" id="deleteMsg" role="status"></p>
+            <div class="confirm-actions">
+                <button type="button" class="btn" id="deleteCancel">Cancel</button>
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </div>
+        </form>
+    </dialog>
+
+    <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Outfit preview" hidden>
+        <button class="viewer-close" id="viewerClose" aria-label="Close">&times;</button>
+        <img id="viewerImg" alt="">
+        <span class="viewer-placeholder" id="viewerPh" aria-hidden="true">&#128087;</span>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        const authHeader = () => ({ Authorization: 'Bearer ' + localStorage.getItem('user_token') });
+
+        function showMsg(el, text, type) { el.className = 'msg ' + type; el.textContent = text; }
+        function errorText(data, fallback) { return typeof data.detail === 'string' ? data.detail : fallback; }
+        function signOutLocally() { localStorage.removeItem('user_token'); window.location.replace('index.html'); }
+
+        // ----- Change password -----
+        const pwForm = document.getElementById('pwForm');
+        const pwMsg = document.getElementById('pwMsg');
+
+        pwForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldPw = document.getElementById('oldPw').value;
+            const newPw = document.getElementById('newPw').value;
+            const confirmPw = document.getElementById('confirmPw').value;
+
+            if (!oldPw || !newPw || !confirmPw) return showMsg(pwMsg, 'Please fill in all three password boxes.', 'error');
+            if (newPw.length < 8) return showMsg(pwMsg, 'New password must be at least 8 characters.', 'error');
+            if (newPw !== confirmPw) return showMsg(pwMsg, 'The new passwords do not match.', 'error');
+            if (newPw === oldPw) return showMsg(pwMsg, 'New password must be different from the old one.', 'error');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/me/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({ old_password: oldPw, new_password: newPw })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMsg(pwMsg, data.message, 'success');
+                    pwForm.reset();
+                } else if (res.status === 401) {
+                    signOutLocally();
+                } else {
+                    showMsg(pwMsg, errorText(data, 'Please check your details and try again.'), 'error');
+                }
+            } catch (err) {
+                showMsg(pwMsg, 'Connection to backend failed.', 'error');
+            }
+        });
+
+        // ----- Location and notification switches  -----
+        const locToggle = document.getElementById('locToggle');
+        const notifToggle = document.getElementById('notifToggle');
+        const prefMsg = document.getElementById('prefMsg');
+
+        locToggle.checked = localStorage.getItem('styleme_location') !== 'off';        // on by default
+        notifToggle.checked = localStorage.getItem('styleme_notifications') === 'on';  // off by default
+
+        locToggle.addEventListener('change', () => {
+            localStorage.setItem('styleme_location', locToggle.checked ? 'on' : 'off');
+            showMsg(prefMsg, '', '');
+            if (locToggle.checked && navigator.geolocation) {
+                // Asks the browser for permission now, so the dashboard weather works straight away
+                navigator.geolocation.getCurrentPosition(
+                    () => {},
+                    () => showMsg(prefMsg, 'Location is blocked in your browser settings.', 'error'),
+                    { timeout: 10000 }
+                );
+            }
+        });
+        notifToggle.addEventListener('change', () => {
+            localStorage.setItem('styleme_notifications', notifToggle.checked ? 'on' : 'off');
+        });
+
+        // ----- Delete account -----
+        const deleteDialog = document.getElementById('deleteDialog');
+        const deleteForm = document.getElementById('deleteForm');
+        const deletePw = document.getElementById('deletePw');
+        const deleteMsg = document.getElementById('deleteMsg');
+
+        document.getElementById('deleteBtn').addEventListener('click', () => {
+            deleteForm.reset();
+            showMsg(deleteMsg, '', '');
+            deleteDialog.showModal();
+            deletePw.focus();
+        });
+        document.getElementById('deleteCancel').addEventListener('click', () => deleteDialog.close());
+
+        deleteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!deletePw.value) return showMsg(deleteMsg, 'Please enter your password.', 'error');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/me`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({ password: deletePw.value })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMsg(deleteMsg, data.message, 'success');
+                    Object.keys(localStorage).filter(k => k === 'user_token' || k.startsWith('styleme_')).forEach(k => localStorage.removeItem(k));
+                    setTimeout(() => window.location.replace('index.html'), 1500);
+                } else if (res.status === 401) {
+                    signOutLocally();
+                } else {
+                    showMsg(deleteMsg, errorText(data, 'Could not delete the account.'), 'error');
+                }
+            } catch (err) {
+                showMsg(deleteMsg, 'Connection to backend failed.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
