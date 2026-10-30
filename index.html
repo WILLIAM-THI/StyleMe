@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Style Me - AI Stylist</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="js/config.js"></script>
 </head>
 <body>
 
@@ -94,7 +95,7 @@
             const endpoint = action === 'signin' ? '/api/login' : '/api/register';
             
             try {
-                const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: email, password: password })

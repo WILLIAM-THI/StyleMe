@@ -1,5 +1,3 @@
-const API_BASE = 'http://127.0.0.1:8000';   // same address as on the login/sign up pages
-
 // ----- Check the login token is still valid -----
 fetch(`${API_BASE}/api/me`, { headers: { Authorization: 'Bearer ' + localStorage.getItem('user_token') } })
     .then(res => {

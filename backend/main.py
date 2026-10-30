@@ -126,3 +126,7 @@ def delete_account(
     db.delete(user)
     db.commit()
     return {"message": "Your account has been deleted."}
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}

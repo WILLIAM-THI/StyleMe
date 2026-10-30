@@ -5,5 +5,8 @@ bcrypt
 PyJWT
 python-dotenv
 pydantic[email]
-psycopg2-binary   # driver for Azure Database for PostgreSQL
-# pyodbc          # only if you choose Azure SQL Database instead (also needs Microsoft's ODBC Driver 18)
+psycopg2-binary   # driver for PostgreSQL on AWS RDS
+python-multipart  # needed for photo uploads
+Pillow            # compresses photos
+anthropic         # AI identifies the clothing
+boto3             # saves photos to S3
