@@ -1,5 +1,4 @@
-/* weather.js - the live weather tile on the dashboard.
-   Load it AFTER common.js. Uses Open-Meteo (free, no API key). */
+// weather.js - the live weather tile on the dashboard.
 
 const wxTile = document.getElementById('wxTile');
 const wxIcon = document.getElementById('wxIcon');

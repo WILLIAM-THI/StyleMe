@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit My Wardrobe - Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/wardrobe.css">
+    <link rel="stylesheet" href="css/edit-item.css">
+    <script>
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard wardrobe-layout">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                Edit My Wardrobe
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="wardrobe.html">My Wardrobe</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="weather-outfit.html">Generate Weather Based Outfit</a>
+                <a href="generate-outfit.html">Generate Outfit</a>
+                <a href="style-me.html">Style Me</a>
+                <a href="saved-outfits.html">Saved Outfits</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
+        </header>
+
+        <div class="wardrobe-body">
+            <p class="add-status" id="aiNotice" hidden>The AI has categorised this item. Check them and edit anything it got wrong.</p>
+
+            <img class="edit-photo" id="editImg" alt="Clothing item">
+
+            <form id="editForm" novalidate>
+                <div class="edit-row"><label for="category">Category</label><select class="pill" id="category"></select></div>
+                <div class="edit-row"><label for="colour">Colour</label><select class="pill" id="colour"></select></div>
+                <div class="edit-row"><label for="season">Season</label><select class="pill" id="season"></select></div>
+                <div class="edit-row"><label for="pattern">Pattern</label><select class="pill" id="pattern"></select></div>
+
+                <p class="msg" id="editMsg" role="status"></p>
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn btn-save">Save</button>
+                    <button type="button" class="btn btn-danger" id="deleteItemBtn">Delete</button>
+                </div>
+            </form>
+        </div>
+
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/menu.js"></script>
+    <script src="js/wardrobe-data.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const itemId = params.get('id');
+        const isNew = params.get('new') === '1';
+
+        const editImg = document.getElementById('editImg');
+        const editMsg = document.getElementById('editMsg');
+        const categorySel = document.getElementById('category');
+        const colourSel = document.getElementById('colour');
+        const seasonSel = document.getElementById('season');
+        const patternSel = document.getElementById('pattern');
+
+        if (!itemId) window.location.replace('wardrobe.html');
+        document.getElementById('aiNotice').hidden = !isNew;
+
+        fillSelect(categorySel, CATEGORY_OPTIONS);
+        fillSelect(colourSel, COLOUR_OPTIONS);
+        fillSelect(seasonSel, SEASON_OPTIONS);
+        fillSelect(patternSel, PATTERN_OPTIONS);
+
+        async function loadItem() {
+            try {
+                const res = await fetch(`${API_BASE}/api/wardrobe/${itemId}`, { headers: authHeader() });
+                if (res.status === 401) return;
+                if (res.status === 404) { window.location.replace('wardrobe.html'); return; }
+                const item = await res.json();
+                editImg.src = photoUrl(item.image_url);
+                fillSelect(categorySel, CATEGORY_OPTIONS, item.category);
+                fillSelect(colourSel, COLOUR_OPTIONS, item.colour);
+                fillSelect(seasonSel, SEASON_OPTIONS, item.season);
+                fillSelect(patternSel, PATTERN_OPTIONS, item.pattern);
+            } catch (err) {
+                editMsg.className = 'msg error';
+                editMsg.textContent = 'Could not load this item. Is the backend running?';
+            }
+        }
+        loadItem();
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const res = await fetch(`${API_BASE}/api/wardrobe/${itemId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({ category: categorySel.value, colour: colourSel.value, season: seasonSel.value, pattern: patternSel.value })
+                });
+                const data = await res.json();
+                if (res.ok) { window.location.href = 'wardrobe.html'; }
+                else { editMsg.className = 'msg error'; editMsg.textContent = typeof data.detail === 'string' ? data.detail : 'Could not save changes.'; }
+            } catch (err) {
+                editMsg.className = 'msg error'; editMsg.textContent = 'Connection to backend failed.';
+            }
+        });
+
+        document.getElementById('deleteItemBtn').addEventListener('click', async () => {
+            if (!confirm("Delete this item? This can't be undone.")) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/wardrobe/${itemId}`, { method: 'DELETE', headers: authHeader() });
+                if (res.ok) window.location.href = 'wardrobe.html';
+                else { const data = await res.json(); editMsg.className = 'msg error'; editMsg.textContent = typeof data.detail === 'string' ? data.detail : 'Could not delete this item.'; }
+            } catch (err) {
+                editMsg.className = 'msg error'; editMsg.textContent = 'Connection to backend failed.';
+            }
+        });
+    </script>
+</body>
+</html>

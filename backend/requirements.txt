@@ -8,5 +8,5 @@ pydantic[email]
 psycopg2-binary   # driver for PostgreSQL on AWS RDS
 python-multipart  # needed for photo uploads
 Pillow            # compresses photos
-anthropic         # AI identifies the clothing
+google-genai      # AI clothing identification (Google Gemini)
 boto3             # saves photos to S3

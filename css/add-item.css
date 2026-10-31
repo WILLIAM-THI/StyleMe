@@ -1,0 +1,28 @@
+[hidden] { display: none !important; }
+
+/* Everything on this page stays phone-sized, even on a wide desktop screen. */
+.add-picker, .add-preview, .add-status { width: 100%; max-width: 360px; margin-left: auto; margin-right: auto; }
+
+.add-picker { display: flex; flex-direction: column; gap: 16px; padding-top: 10px; }
+.add-hint { font-size: 15px; color: #aaaaaa; text-align: center; line-height: 1.4; }
+.btn-add-photo { width: 100%; padding: 18px; font-size: 20px; background: #262626; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
+.btn-add-photo:hover { background: #303030; }
+
+.add-preview { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+/* Capped by screen height so the "Use this photo" button is always visible without scrolling. */
+.add-preview img { max-width: 100%; max-height: 38vh; object-fit: contain; border-radius: 16px; background: #1a1a1a; }
+/* Styled here so the button looks right whichever shared stylesheet defines .btn. */
+.add-preview .btn { width: 100%; padding: 16px 24px; font-size: 20px; color: #79f7aa; background: #333333; border: none; border-radius: 25px; transition: background 0.2s; }
+.add-preview .btn:hover { background: #3d3d3d; }
+.add-preview .btn:focus-visible { outline: 2px solid #79f7aa; outline-offset: 2px; }
+.add-preview .btn:disabled { opacity: 0.5; cursor: default; }
+.add-status { font-size: 15px; color: #cccccc; text-align: center; min-height: 1.3em; }
+.add-status.error { color: #ff8787; }
+
+/* Camera view (computers with a webcam) */
+.cam-overlay { position: fixed; inset: 0; z-index: 100; background: #000000; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px; }
+.cam-overlay video { flex: 1; min-height: 0; max-width: 100%; object-fit: contain; border-radius: 16px; background: #1a1a1a; }
+.cam-actions { display: flex; gap: 16px; width: 100%; max-width: 360px; }
+.cam-actions .btn { flex: 1; padding: 16px 24px; font-size: 20px; color: #ffffff; background: #333333; border: none; border-radius: 25px; transition: background 0.2s; }
+.cam-actions .btn-save { color: #79f7aa; }
+.cam-actions .btn:hover { background: #3d3d3d; }

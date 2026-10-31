@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wardrobe - Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/wardrobe.css">
+    <script>
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard wardrobe-layout">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                My Wardrobe
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="wardrobe.html" class="current" aria-current="page">My Wardrobe</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="weather-outfit.html">Generate Weather Based Outfit</a>
+                <a href="generate-outfit.html">Generate Outfit</a>
+                <a href="style-me.html">Style Me</a>
+                <a href="saved-outfits.html">Saved Outfits</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
+        </header>
+
+        <div class="wardrobe-body">
+            <section class="actions">
+                <a class="action-btn action-add" href="add-item.html" aria-label="Add clothing item">+</a>
+                <button type="button" class="action-btn action-remove" id="removeBtn" aria-pressed="false">&minus;</button>
+            </section>
+
+            <section class="grid" id="grid" aria-label="Your clothing items"></section>
+            <p class="empty-msg" id="emptyMsg" hidden>Your wardrobe is empty. Tap + to add your first item.</p>
+
+            <div class="delete-bar" id="deleteBar">
+                <span id="selectedCount">0 selected</span>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/menu.js"></script>
+    <script>
+        const grid = document.getElementById('grid');
+        const emptyMsg = document.getElementById('emptyMsg');
+        const removeBtn = document.getElementById('removeBtn');
+        const deleteBar = document.getElementById('deleteBar');
+        const selectedCount = document.getElementById('selectedCount');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+        let items = [];
+        let deleteMode = false;
+        const selected = new Set();
+
+        async function loadWardrobe() {
+            try {
+                const res = await fetch(`${API_BASE}/api/wardrobe`, { headers: authHeader() });
+                if (res.status === 401) return; // menu.js handling the redirect
+                items = await res.json();
+                renderGrid();
+            } catch (err) {
+                emptyMsg.textContent = 'Could not load your wardrobe. Is the backend running?';
+                emptyMsg.hidden = false;
+            }
+        }
+
+        function renderGrid() {
+            grid.innerHTML = '';
+            grid.classList.toggle('delete-mode', deleteMode);
+            emptyMsg.hidden = items.length > 0;
+
+            items.forEach(item => {
+                const cell = document.createElement('button');
+                cell.type = 'button';
+                cell.className = 'item' + (selected.has(item.id) ? ' selected' : '');
+                cell.dataset.id = item.id;
+                cell.setAttribute('aria-label', item.category.replace(/_/g, ' '));
+
+                const img = document.createElement('img');
+                img.src = photoUrl(item.image_url);
+                img.alt = '';
+                cell.appendChild(img);
+
+                const check = document.createElement('span');
+                check.className = 'check';
+                check.textContent = '✓';
+                check.setAttribute('aria-hidden', 'true');
+                cell.appendChild(check);
+
+                cell.addEventListener('click', () => {
+                    if (deleteMode) {
+                        if (selected.has(item.id)) selected.delete(item.id); else selected.add(item.id);
+                        renderGrid();
+                        updateDeleteBar();
+                    } else {
+                        window.location.href = `edit-item.html?id=${item.id}`;
+                    }
+                });
+                grid.appendChild(cell);
+            });
+        }
+
+        function updateDeleteBar() {
+            deleteBar.classList.toggle('show', selected.size > 0);
+            selectedCount.textContent = `${selected.size} selected`;
+        }
+
+        removeBtn.addEventListener('click', () => {
+            deleteMode = !deleteMode;
+            removeBtn.classList.toggle('on', deleteMode);
+            removeBtn.setAttribute('aria-pressed', String(deleteMode));
+            if (!deleteMode) { selected.clear(); updateDeleteBar(); }
+            renderGrid();
+        });
+
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (selected.size === 0) return;
+            if (!confirm(`Delete ${selected.size} item(s)? This can't be undone.`)) return;
+
+            confirmDeleteBtn.disabled = true;
+            for (const id of selected) {
+                try {
+                    await fetch(`${API_BASE}/api/wardrobe/${id}`, { method: 'DELETE', headers: authHeader() });
+                } catch (err) { /* one failed delete shouldn't stop the rest */ }
+            }
+            confirmDeleteBtn.disabled = false;
+            selected.clear();
+            deleteMode = false;
+            removeBtn.classList.remove('on');
+            removeBtn.setAttribute('aria-pressed', 'false');
+            updateDeleteBar();
+            loadWardrobe();
+        });
+
+        loadWardrobe();
+    </script>
+</body>
+</html>

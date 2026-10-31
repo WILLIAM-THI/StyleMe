@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add To My Wardrobe - Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/wardrobe.css">
+    <link rel="stylesheet" href="css/add-item.css">
+    <script>
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard wardrobe-layout">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                Add To My Wardrobe
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="wardrobe.html">My Wardrobe</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="weather-outfit.html">Generate Weather Based Outfit</a>
+                <a href="generate-outfit.html">Generate Outfit</a>
+                <a href="style-me.html">Style Me</a>
+                <a href="saved-outfits.html">Saved Outfits</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
+        </header>
+
+        <div class="wardrobe-body">
+            <section class="add-picker" id="picker">
+                <p class="add-hint">Add a photo of one clothing item, on its own, against a plain background if possible.</p>
+                <button type="button" class="btn btn-add-photo" id="takePhotoBtn">Take Photo</button>
+                <button type="button" class="btn btn-add-photo" id="galleryBtn">Choose from Gallery</button>
+
+                <!-- capture="environment" hints at the back camera on phones/tablets; desktop browsers
+                     just open the normal file picker, since they have no camera capture support. -->
+                <input type="file" accept="image/*" capture="environment" id="cameraInput" hidden>
+                <input type="file" accept="image/*" id="galleryInput" hidden>
+            </section>
+
+            <!-- Hidden until a photo is chosen. To pick a different photo, use the buttons above again. -->
+            <section class="add-preview" id="previewSection" hidden>
+                <img id="previewImg" alt="Selected clothing photo">
+                <button type="button" class="btn btn-save" id="uploadBtn">Use this photo</button>
+            </section>
+
+            <p class="add-status" id="statusMsg" role="status"></p>
+        </div>
+
+    </main>
+
+    <!-- Camera view for computers with a webcam -->
+    <div class="cam-overlay" id="camOverlay" hidden>
+        <video id="camVideo" autoplay playsinline muted></video>
+        <div class="cam-actions">
+            <button type="button" class="btn" id="camCancel">Cancel</button>
+            <button type="button" class="btn btn-save" id="camSnap">Capture</button>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/menu.js"></script>
+    <script>
+        const previewSection = document.getElementById('previewSection');
+        const previewImg = document.getElementById('previewImg');
+        const statusMsg = document.getElementById('statusMsg');
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        let chosenFile = null;
+
+        function showPreview(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { statusMsg.className = 'add-status error'; statusMsg.textContent = 'Please choose an image file.'; return; }
+
+            chosenFile = file;
+            previewImg.src = URL.createObjectURL(file);
+            previewSection.hidden = false;
+            uploadBtn.disabled = false;
+            statusMsg.className = 'add-status';
+            statusMsg.textContent = '';
+        }
+
+        // ----- Camera -----
+        const camOverlay = document.getElementById('camOverlay');
+        const camVideo = document.getElementById('camVideo');
+        let camStream = null;
+
+        // Phones and tablets: the built-in camera app (via the file input).
+        // Computers: show the webcam in the page.
+        const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
+        function stopCamera() {
+            if (camStream) camStream.getTracks().forEach(t => t.stop());
+            camStream = null;
+            camVideo.srcObject = null;
+            camOverlay.hidden = true;
+        }
+
+        async function openCamera() {
+            if (isTouchDevice || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                document.getElementById('cameraInput').click();
+                return;
+            }
+            try {
+                camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+                camVideo.srcObject = camStream;
+                camOverlay.hidden = false;
+            } catch (err) {
+                statusMsg.className = 'add-status error';
+                statusMsg.textContent = "Couldn't open the camera. Allow camera access in your browser, or use Choose from Gallery.";
+            }
+        }
+
+        document.getElementById('camSnap').addEventListener('click', () => {
+            if (!camVideo.videoWidth) return; // camera not ready yet
+            const canvas = document.createElement('canvas');
+            canvas.width = camVideo.videoWidth;
+            canvas.height = camVideo.videoHeight;
+            canvas.getContext('2d').drawImage(camVideo, 0, 0);
+            canvas.toBlob((blob) => {
+                stopCamera();
+                if (blob) showPreview(new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' }));
+            }, 'image/jpeg', 0.92);
+        });
+        document.getElementById('camCancel').addEventListener('click', stopCamera);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !camOverlay.hidden) stopCamera(); });
+
+        document.getElementById('takePhotoBtn').addEventListener('click', openCamera);
+        document.getElementById('galleryBtn').addEventListener('click', () => document.getElementById('galleryInput').click());
+        // The value is cleared afterwards so choosing the same photo again still counts as a change.
+        for (const id of ['cameraInput', 'galleryInput']) {
+            const input = document.getElementById(id);
+            input.addEventListener('change', () => { showPreview(input.files[0]); input.value = ''; });
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!chosenFile) return;
+            uploadBtn.disabled = true;
+            statusMsg.className = 'add-status';
+            statusMsg.textContent = 'Uploading and identifying the item...';
+
+            const formData = new FormData();
+            formData.append('file', chosenFile);
+
+            try {
+                const res = await fetch(`${API_BASE}/api/wardrobe`, { method: 'POST', headers: authHeader(), body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    window.location.href = `edit-item.html?id=${data.id}&new=1`;
+                } else if (res.status === 401) {
+                    window.location.replace('index.html');
+                } else {
+                    statusMsg.className = 'add-status error';
+                    statusMsg.textContent = typeof data.detail === 'string' ? data.detail : 'Could not add this item.';
+                    uploadBtn.disabled = false;
+                }
+            } catch (err) {
+                statusMsg.className = 'add-status error';
+                statusMsg.textContent = 'Connection to backend failed.';
+                uploadBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
