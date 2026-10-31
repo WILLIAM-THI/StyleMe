@@ -83,7 +83,9 @@ a { color: inherit; text-decoration: none; }
 .card[data-pos="behind"] { filter: brightness(0.7); }
 .card[data-pos="far"]    { opacity: 0; pointer-events: none; filter: brightness(0.7); }
 .card[data-pos="gone"]   { opacity: 0; pointer-events: none; transform: translateX(-110%); }
-.card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
+.card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
+/* Saved outfit collage inside a card (collage styles are in outfit-view.css) */
+.card .outfit-stage { position: absolute; inset: 0; aspect-ratio: auto; border-radius: 0; pointer-events: none; padding-bottom: 13%; }
 .card-placeholder { font-size: 96px; opacity: 0.45; }
 
 /* Always-visible label that links to the Saved Outfits page */
@@ -107,8 +109,7 @@ a { color: inherit; text-decoration: none; }
 /* Fullscreen outfit viewer */
 .viewer { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, 0.95); cursor: pointer; }
 .viewer[hidden] { display: none; }
-.viewer img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
-.viewer-placeholder { font-size: 160px; opacity: 0.5; }
+.viewer .outfit-stage { width: min(100%, calc((100vh - 48px) * 0.7317), 620px); aspect-ratio: 3 / 4.1; pointer-events: none; }
 .viewer-close { position: absolute; top: 14px; right: 20px; font-size: 44px; line-height: 1; color: #ffffff; }
 
 @media (prefers-reduced-motion: reduce) { .card { transition: none; } }

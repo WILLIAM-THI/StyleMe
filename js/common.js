@@ -10,22 +10,19 @@ fetch(`${API_BASE}/api/me`, { headers: { Authorization: 'Bearer ' + localStorage
 
 // ----- Fullscreen viewer -----
 const viewer = document.getElementById('viewer');
-const viewerImg = document.getElementById('viewerImg');
-const viewerPh = document.getElementById('viewerPh');
+const viewerStage = document.getElementById('viewerStage');
 
 function openFront() {
     const outfit = savedOutfits[current];
-    if (outfit.empty) { window.location.href = 'generate-outfit.html'; return; }
-    viewerImg.hidden = !outfit.image;
-    viewerPh.hidden = !!outfit.image;
-    if (outfit.image) { viewerImg.src = outfit.image; viewerImg.alt = 'Saved outfit'; }
+    if (outfit.empty) { window.location.href = 'weather-outfit.html'; return; }
+    renderOutfit(viewerStage, outfit.items);
     viewer.hidden = false;
     document.body.style.overflow = 'hidden';
     document.getElementById('viewerClose').focus();
 }
 function closeViewer() {
     viewer.hidden = true;
-    viewerImg.removeAttribute('src');
+    viewerStage.innerHTML = '';
     document.body.style.overflow = '';
 }
 viewer.addEventListener('click', closeViewer);
@@ -51,39 +48,53 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ----- Saved outfits: stacked cards -----
-let savedOutfits = [
-    { id: 1, image: '' },
-    { id: 2, image: '' },
-    { id: 3, image: '' }
-];
-if (savedOutfits.length === 0) savedOutfits = [{ empty: true, image: '' }];
+const MAX_CARDS = 8;   // the newest outfits; the Saved Outfits page shows them all
 
+let savedOutfits = [];   // [{ id, items: [...] }], or a single { empty: true } when there are none yet
 const stack = document.getElementById('stack');
 const dotsBox = document.getElementById('dots');
-const cards = [];
+let cards = [];
 let current = 0;
 
-savedOutfits.forEach((outfit, i) => {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'card';
-    card.dataset.index = i;
-    card.setAttribute('aria-label', outfit.empty ? 'No saved outfits yet. Create one' : 'Open outfit ' + (i + 1));
-    if (outfit.image) {
-        const img = document.createElement('img');
-        img.src = outfit.image;
-        img.alt = '';
-        img.draggable = false;
-        card.appendChild(img);
-    } else {
-        const ph = document.createElement('span');
-        ph.className = 'card-placeholder';
-        ph.textContent = '👗';
-        card.appendChild(ph);
+function buildCards() {
+    stack.innerHTML = '';
+    dotsBox.innerHTML = '';
+    cards = [];
+    current = 0;
+    if (savedOutfits.length === 0) savedOutfits = [{ empty: true }];
+
+    savedOutfits.forEach((outfit, i) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'card';
+        card.dataset.index = i;
+        card.setAttribute('aria-label', outfit.empty ? 'No saved outfits yet. Create one' : 'Open outfit ' + (i + 1));
+        if (outfit.empty) {
+            const ph = document.createElement('span');
+            ph.className = 'card-placeholder';
+            ph.textContent = '👗';
+            card.appendChild(ph);
+        } else {
+            const outfitStage = document.createElement('div');
+            outfitStage.className = 'outfit-stage';
+            renderOutfit(outfitStage, outfit.items);
+            card.appendChild(outfitStage);
+        }
+        stack.appendChild(card);
+        cards.push(card);
+    });
+
+    if (cards.length > 1) {
+        cards.forEach((_, i) => {
+            const dot = document.createElement('button');
+            dot.className = 'dot';
+            dot.setAttribute('aria-label', 'Show outfit ' + (i + 1));
+            dot.addEventListener('click', () => go(i));
+            dotsBox.appendChild(dot);
+        });
     }
-    stack.appendChild(card);
-    cards.push(card);
-});
+    render();
+}
 
 // Puts every card in the right place: front, behind, far behind, or swiped away
 function render() {
@@ -101,16 +112,16 @@ function go(i) {
     render();
 }
 
-if (cards.length > 1) {
-    cards.forEach((_, i) => {
-        const dot = document.createElement('button');
-        dot.className = 'dot';
-        dot.setAttribute('aria-label', 'Show outfit ' + (i + 1));
-        dot.addEventListener('click', () => go(i));
-        dotsBox.appendChild(dot);
-    });
+async function loadSavedOutfits() {
+    try {
+        const res = await fetch(`${API_BASE}/api/outfits`, { headers: { Authorization: 'Bearer ' + localStorage.getItem('user_token') } });
+        if (res.status === 401) return; // the login check above is already handling the redirect
+        savedOutfits = (await res.json()).slice(0, MAX_CARDS);   // the backend sends the newest first
+    } catch (err) {
+        savedOutfits = [];
+    }
+    buildCards();
 }
-render();
 
 // Swipe to change card, tap the front card to open it, tap a card behind to bring it forward
 let startX = null;
@@ -127,8 +138,11 @@ stack.addEventListener('pointerup', (e) => {
     const index = Number(card.dataset.index);
     if (index === current) openFront(); else go(index);
 });
+// Keyboard: Enter/Space on the front card (a keyboard click has detail 0), arrow keys to move
 stack.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest('.card')?.dataset.pos === 'front') openFront(); });
 stack.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') go(current + 1);
     if (e.key === 'ArrowLeft') go(current - 1);
 });
+
+loadSavedOutfits();

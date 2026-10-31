@@ -1,4 +1,4 @@
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px;margin-bottom: 28px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
 .action-btn {
     aspect-ratio: 5 / 2;
     display: flex; align-items: center; justify-content: center;
@@ -41,8 +41,17 @@
 .delete-bar .btn { min-width: 0; padding: 8px 18px; font-size: 16px; }
 
 @media (min-width: 900px) {
+    /* Keep the + and - buttons phone-sized instead of stretching across the desktop screen. */
     .actions { width: 100%; max-width: 360px; margin-left: auto; margin-right: auto; }
+    /* Photo grid size */
     .grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     .dashboard.wardrobe-layout { grid-template-columns: 1fr; grid-template-areas: "header" "body"; }
     .wardrobe-body { grid-area: body; display: flex; flex-direction: column; gap: 20px; min-height: 0; overflow-y: auto; }
+}
+
+
+.menu-btn { display: block; text-align: left; }
+.menu-btn svg { display: inline-block; vertical-align: middle; margin-left: 6px; }
+@media (max-width: 480px) {
+    .menu-btn { font-size: 24px; }
 }

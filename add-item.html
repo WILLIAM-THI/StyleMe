@@ -38,7 +38,10 @@
             <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
         </header>
 
-        <div class="wardrobe-body">
+        <div class="wardrobe-body add-body">
+            <section class="grid add-grid" id="grid" aria-label="Your clothing items"></section>
+
+            <div class="add-side">
             <section class="add-picker" id="picker">
                 <p class="add-hint">Add a photo of one clothing item, on its own, against a plain background if possible.</p>
                 <button type="button" class="btn btn-add-photo" id="takePhotoBtn">Take Photo</button>
@@ -57,6 +60,7 @@
             </section>
 
             <p class="add-status" id="statusMsg" role="status"></p>
+            </div>
         </div>
 
     </main>
@@ -144,6 +148,26 @@
             const input = document.getElementById(id);
             input.addEventListener('change', () => { showPreview(input.files[0]); input.value = ''; });
         }
+
+        // ----- Your wardrobe, shown on the left on desktop. Click an item to edit it. -----
+        (async () => {
+            const grid = document.getElementById('grid');
+            try {
+                const res = await fetch(`${API_BASE}/api/wardrobe`, { headers: authHeader() });
+                if (!res.ok) return;
+                for (const item of await res.json()) {
+                    const cell = document.createElement('a');
+                    cell.className = 'item';
+                    cell.href = `edit-item.html?id=${item.id}`;
+                    cell.setAttribute('aria-label', item.category.replace(/_/g, ' '));
+                    const img = document.createElement('img');
+                    img.src = photoUrl(item.image_url);
+                    img.alt = '';
+                    cell.appendChild(img);
+                    grid.appendChild(cell);
+                }
+            } catch (err) { /* the grid is just a bonus, ignore errors */ }
+        })();
 
         uploadBtn.addEventListener('click', async () => {
             if (!chosenFile) return;

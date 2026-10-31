@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Outfits - Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/wardrobe.css">
+    <link rel="stylesheet" href="css/outfit-view.css">
+    <link rel="stylesheet" href="css/saved-outfits.css">
+    <script>
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard wardrobe-layout">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                Saved Outfits
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="saved-outfits.html" class="current" aria-current="page">Saved Outfits</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="wardrobe.html">My Wardrobe</a>
+                <a href="weather-outfit.html">Generate Weather Based Outfit</a>
+                <a href="generate-outfit.html">Generate Outfit</a>
+                <a href="style-me.html">Style Me</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
+        </header>
+
+        <div class="wardrobe-body">
+            <div class="so">
+                <div class="sort-wrap">
+                    <button type="button" class="sort-btn" id="sortBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sortMenu">
+                        Sort By
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+                    </button>
+                    <div class="sort-menu" id="sortMenu" hidden>
+                        <button type="button" data-sort="newest">Newest first</button>
+                        <button type="button" data-sort="oldest">Oldest first</button>
+                    </div>
+                </div>
+
+                <section class="so-grid" id="grid" aria-label="Your saved outfits"></section>
+                <p class="so-empty" id="emptyMsg" hidden>
+                    You haven't saved any outfits yet. Try
+                    <a href="weather-outfit.html">Generate Weather Based Outfit</a>, then press Save Outfit.
+                </p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Enlarged outfit, with the option to delete -->
+    <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Saved outfit">
+        <div class="outfit-stage" id="viewerStage"></div>
+        <p class="viewer-msg" id="viewerMsg" role="status"></p>
+        <div class="viewer-actions" id="viewerActions">
+            <button type="button" class="viewer-btn viewer-delete" id="deleteBtn">Delete</button>
+            <button type="button" class="viewer-btn" id="closeBtn">Close</button>
+        </div>
+        <div class="viewer-confirm" id="confirmRow" hidden>
+            <span>Delete this outfit?</span>
+            <button type="button" class="viewer-btn" id="cancelDeleteBtn">Cancel</button>
+            <button type="button" class="viewer-btn viewer-delete" id="yesDeleteBtn">Delete</button>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/menu.js"></script>
+    <script src="js/outfit-view.js"></script>
+    <script>
+        const grid = document.getElementById('grid');
+        const emptyMsg = document.getElementById('emptyMsg');
+        const sortBtn = document.getElementById('sortBtn');
+        const sortMenu = document.getElementById('sortMenu');
+        const viewer = document.getElementById('viewer');
+        const viewerStage = document.getElementById('viewerStage');
+        const viewerMsg = document.getElementById('viewerMsg');
+        const viewerActions = document.getElementById('viewerActions');
+        const confirmRow = document.getElementById('confirmRow');
+        const closeBtn = document.getElementById('closeBtn');
+        const yesDeleteBtn = document.getElementById('yesDeleteBtn');
+
+        let saved = [];          // outfits from the backend
+        let sortOrder = 'newest';
+        let openOutfit = null;   // the outfit shown enlarged
+
+        try { if (localStorage.getItem('styleme_outfit_sort') === 'oldest') sortOrder = 'oldest'; } catch (e) { /* storage blocked: keep the default */ }
+
+        // ----- Loading and drawing the grid -----
+        async function loadOutfits() {
+            try {
+                const res = await fetch(`${API_BASE}/api/outfits`, { headers: authHeader() });
+                if (res.status === 401) return; // menu.js is already handling the redirect
+                saved = await res.json();
+                renderGrid();
+            } catch (err) {
+                emptyMsg.textContent = 'Could not load your saved outfits. Is the backend running?';
+                emptyMsg.hidden = false;
+            }
+        }
+
+        function sortedOutfits() {
+            const list = [...saved].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            return sortOrder === 'newest' ? list.reverse() : list;
+        }
+
+        function renderGrid() {
+            grid.innerHTML = '';
+            emptyMsg.hidden = saved.length > 0;
+
+            sortedOutfits().forEach((outfit, index) => {
+                const tile = document.createElement('button');
+                tile.type = 'button';
+                tile.className = 'so-tile';
+                tile.dataset.id = outfit.id;
+                tile.setAttribute('aria-label', `Open saved outfit ${index + 1}`);
+
+                const stage = document.createElement('div');
+                stage.className = 'outfit-stage';
+                renderOutfit(stage, outfit.items);
+                tile.appendChild(stage);
+
+                tile.addEventListener('click', () => openViewer(outfit));
+                grid.appendChild(tile);
+            });
+
+            sortMenu.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sort === sortOrder));
+        }
+
+        // ----- Sort By -----
+        function setSortMenu(open) {
+            sortMenu.hidden = !open;
+            sortBtn.setAttribute('aria-expanded', String(open));
+        }
+        sortBtn.addEventListener('click', () => setSortMenu(sortMenu.hidden));
+        sortMenu.addEventListener('click', (e) => {
+            const choice = e.target.dataset.sort;
+            if (!choice) return;
+            sortOrder = choice;
+            try { localStorage.setItem('styleme_outfit_sort', choice); } catch (err) { /* not important */ }
+            setSortMenu(false);
+            renderGrid();
+        });
+        document.addEventListener('click', (e) => { if (!e.target.closest('.sort-wrap')) setSortMenu(false); });
+
+        // ----- Enlarged outfit -----
+        function showConfirm(on) {
+            confirmRow.hidden = !on;
+            viewerActions.hidden = on;
+            if (on) document.getElementById('cancelDeleteBtn').focus(); else closeBtn.focus();
+        }
+
+        function openViewer(outfit) {
+            openOutfit = outfit;
+            renderOutfit(viewerStage, outfit.items);
+            viewerMsg.textContent = '';
+            confirmRow.hidden = true;
+            viewerActions.hidden = false;
+            viewer.hidden = false;
+            document.body.style.overflow = 'hidden';
+            closeBtn.focus();
+        }
+
+        function closeViewer() {
+            const id = openOutfit && openOutfit.id;
+            viewer.hidden = true;
+            openOutfit = null;
+            document.body.style.overflow = '';
+            const tile = id && grid.querySelector(`[data-id="${id}"]`);
+            if (tile) tile.focus();
+        }
+
+        closeBtn.addEventListener('click', closeViewer);
+        viewer.addEventListener('click', (e) => { if (e.target === viewer) closeViewer(); });  // tap the dark area to close
+        document.getElementById('deleteBtn').addEventListener('click', () => showConfirm(true));
+        document.getElementById('cancelDeleteBtn').addEventListener('click', () => showConfirm(false));
+
+        yesDeleteBtn.addEventListener('click', async () => {
+            if (!openOutfit) return;
+            yesDeleteBtn.disabled = true;
+            try {
+                const res = await fetch(`${API_BASE}/api/outfits/${openOutfit.id}`, { method: 'DELETE', headers: authHeader() });
+                if (res.ok || res.status === 404) {
+                    saved = saved.filter(o => o.id !== openOutfit.id);
+                    closeViewer();
+                    renderGrid();
+                } else {
+                    viewerMsg.textContent = 'Could not delete this outfit.';
+                    showConfirm(false);
+                }
+            } catch (err) {
+                viewerMsg.textContent = 'Connection to backend failed.';
+                showConfirm(false);
+            } finally {
+                yesDeleteBtn.disabled = false;
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (!viewer.hidden) closeViewer(); else setSortMenu(false);
+        });
+
+        loadOutfits();
+    </script>
+</body>
+</html>

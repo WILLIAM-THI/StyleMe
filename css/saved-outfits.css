@@ -1,0 +1,59 @@
+.so { display: flex; flex-direction: column; gap: 12px; }
+
+/* Sort By */
+.sort-wrap { position: relative; align-self: flex-start; }
+.sort-btn { display: flex; align-items: center; font-size: 24px; padding: 2px 0; }
+.sort-btn svg { width: 26px; height: 26px; margin-left: 10px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.15s; }
+.sort-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.sort-btn:focus-visible, .sort-menu button:focus-visible { outline: 2px solid #79f7aa; outline-offset: 2px; }
+.sort-menu {
+    position: absolute; top: calc(100% + 8px); left: 0; z-index: 25; min-width: 200px;
+    display: flex; flex-direction: column; padding: 8px 0;
+    background: rgba(58, 58, 58, 0.97); border-radius: 20px;
+}
+.sort-menu[hidden] { display: none; }
+.sort-menu button { text-align: left; font-size: 19px; padding: 11px 22px; color: #dddddd; }
+.sort-menu button.on { color: #79f7aa; }
+
+/* The grid of outfits: edge to edge on a phone */
+.so-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0 -16px; }
+.so-tile { display: block; padding: 0; position: relative; }
+.so-tile .outfit-stage { aspect-ratio: 1 / 1; border-radius: 0; pointer-events: none; }
+.so-tile:focus-visible { outline: 2px solid #79f7aa; outline-offset: -2px; z-index: 1; }
+.so-tile:hover .outfit-stage { filter: brightness(0.94); }
+
+.so-empty { text-align: center; padding: 40px 16px; color: #999999; font-size: 17px; line-height: 1.5; }
+.so-empty a { color: #79f7aa; text-decoration: underline; }
+.so-empty[hidden] { display: none; }
+
+/* Enlarged outfit */
+.viewer {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    padding: 16px; background: rgba(0, 0, 0, 0.9);
+}
+.viewer[hidden] { display: none; }
+.viewer .outfit-stage {
+    /* Width is worked out from the screen height so the whole outfit and the buttons always fit. */
+    width: min(100%, calc((100vh - 170px) * 0.7317), 440px);
+    aspect-ratio: 3 / 4.1;
+}
+.viewer-actions, .viewer-confirm { display: flex; align-items: center; justify-content: center; gap: 14px; width: min(100%, 440px); }
+.viewer-actions[hidden], .viewer-confirm[hidden] { display: none; }
+.viewer-confirm span { font-size: 18px; color: #dddddd; }
+.viewer-btn {
+    flex: 1; padding: 14px 8px; font-size: 21px; line-height: 1.1;
+    background: #262626; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 28px;
+    transition: background 0.15s;
+}
+.viewer-btn:hover:not(:disabled) { background: #333333; }
+.viewer-btn:focus-visible { outline: 2px solid #79f7aa; outline-offset: 2px; }
+.viewer-btn:disabled { opacity: 0.5; cursor: default; }
+.viewer-delete { color: #ff6b6b; }
+.viewer-msg { min-height: 1.2em; font-size: 15px; color: #ff8787; text-align: center; }
+.viewer-msg:empty { display: none; }
+
+@media (min-width: 900px) {
+    /* Same idea as My Wardrobe: as many columns as fit, no rounded corners, no edge-to-edge. */
+    .so-grid { margin: 0; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px; }
+}

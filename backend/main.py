@@ -1,4 +1,6 @@
+"""Style Me backend. Run with:  uvicorn main:app --reload"""
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +13,7 @@ from sqlalchemy.orm import Session
 
 import ai_identify
 import models
+import outfits
 import security
 import storage
 from database import Base, engine, get_db
@@ -20,7 +23,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Style Me API")
 
-# Lets website call this backend from the browser.
+# Lets your website (a different address) call this backend from the browser.
 origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
 
@@ -76,14 +79,14 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = db.scalar(select(models.User).where(models.User.email == body.email.lower()))
 
-    # Error message whether the email or the password is wrong.
+    # Same message whether the email or the password was wrong.
     if not user or not security.verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
 
     return {"message": f"Welcome back, {user.name}!", "token": security.create_token(user.id)}
 
 
-
+# ---------- Protecting routes ----------
 bearer = HTTPBearer()
 
 
@@ -138,12 +141,12 @@ def delete_account(
     if not security.verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Password is incorrect.")
 
-    # Remember the photo filenames first, rows are about to be deleted.
+    # Remember the photo filenames first, because the rows are about to be deleted.
     photo_names = db.scalars(
         select(models.ClothingItem.image_filename).where(models.ClothingItem.user_id == user.id)
     ).all()
 
-    # Also deletes clothing items and outfits.
+    # Also deletes their clothing items and outfits.
     db.delete(user)
     db.commit()
 
@@ -258,3 +261,105 @@ def delete_clothing_item(item_id: int, user: models.User = Depends(get_current_u
     db.commit()
     storage.delete_image(filename)
     return {"message": "Item deleted."}
+
+
+# ---------- Outfits ----------
+class GenerateOutfitRequest(BaseModel):
+    temp_c: float = Field(ge=-60, le=60)
+    condition: str = Field(default="", max_length=40)
+    previous_item_ids: list[int] = Field(default_factory=list, max_length=20)  # so "Regenerate" gives something new
+
+
+@app.post("/api/outfits/generate")
+def generate_outfit(
+    body: GenerateOutfitRequest,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Suggests an outfit from the user's wardrobe. Nothing is saved until they press Save."""
+    items = list(db.scalars(select(models.ClothingItem).where(models.ClothingItem.user_id == user.id)).all())
+
+    # If a chosen item's photo file is missing, leave that item out and choose again.
+    skipped: set[int] = set()
+    for _ in range(5):
+        pool = [i for i in items if i.id not in skipped]
+        result = outfits.generate(pool, body.temp_c, body.condition, set(body.previous_item_ids))
+        if result is None:
+            break
+        chosen, missing = result
+        with ThreadPoolExecutor() as executor:
+            present = list(executor.map(lambda i: storage.image_exists(i.image_filename), chosen))
+        gone = [i for i, ok in zip(chosen, present) if not ok]
+        if not gone:
+            return {"items": [_item_out(i) for i in chosen], "missing": missing}
+        skipped.update(i.id for i in gone)
+
+    if skipped:
+        raise HTTPException(
+            status_code=400,
+            detail="Some wardrobe photos can't be found. Delete the blank items on My Wardrobe, then try again.",
+        )
+    raise HTTPException(
+        status_code=400,
+        detail="Add at least a top and bottoms (or a dress) to your wardrobe first.",
+    )
+
+
+class SaveOutfitRequest(BaseModel):
+    item_ids: list[int] = Field(min_length=1, max_length=8)
+    prompt: str | None = Field(default=None, max_length=200)   # e.g. "Weather: 12°C, Rain"
+
+
+def _outfit_out(outfit: models.Outfit) -> dict:
+    return {
+        "id": outfit.id,
+        "prompt": outfit.prompt,
+        "created_at": outfit.created_at.isoformat() if outfit.created_at else None,
+        "items": [_item_out(i) for i in sorted(outfit.items, key=outfits._group)],
+    }
+
+
+@app.post("/api/outfits", status_code=201)
+def save_outfit(
+    body: SaveOutfitRequest,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    wanted = set(body.item_ids)
+    found = db.scalars(
+        select(models.ClothingItem).where(
+            models.ClothingItem.id.in_(wanted), models.ClothingItem.user_id == user.id
+        )
+    ).all()
+    if len(found) != len(wanted):  # an id that doesn't exist, or belongs to someone else
+        raise HTTPException(status_code=400, detail="Some of those items could not be found.")
+
+    # Saving the same combination twice would just clutter their Saved Outfits.
+    for existing in db.scalars(select(models.Outfit).where(models.Outfit.user_id == user.id)).all():
+        if {i.id for i in existing.items} == wanted:
+            return {"id": existing.id, "message": "This outfit is already saved."}
+
+    outfit = models.Outfit(user_id=user.id, prompt=body.prompt, items=list(found))
+    db.add(outfit)
+    db.commit()
+    db.refresh(outfit)
+    return {"id": outfit.id, "message": "Outfit saved."}
+
+
+@app.get("/api/outfits")
+def list_outfits(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    saved = db.scalars(
+        select(models.Outfit).where(models.Outfit.user_id == user.id).order_by(models.Outfit.created_at.desc())
+    ).all()
+    # An outfit whose clothes were all deleted from the wardrobe has nothing left to show.
+    return [_outfit_out(o) for o in saved if o.items]
+
+
+@app.delete("/api/outfits/{outfit_id}")
+def delete_outfit(outfit_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    outfit = db.get(models.Outfit, outfit_id)
+    if not outfit or outfit.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Outfit not found.")
+    db.delete(outfit)
+    db.commit()
+    return {"message": "Outfit deleted."}

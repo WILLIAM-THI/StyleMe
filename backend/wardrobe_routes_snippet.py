@@ -1,23 +1,3 @@
-# ============================================================
-# PASTE 1 — near the top of main.py, with your other imports:
-# ============================================================
-#
-# from fastapi import File, UploadFile
-# from fastapi.staticfiles import StaticFiles
-# import storage
-# import ai_identify
-#
-# Then, right after `app = FastAPI(...)` and the CORS middleware, add:
-#
-# storage.LOCAL_UPLOAD_DIR.mkdir(exist_ok=True)
-# app.mount("/uploads", StaticFiles(directory=storage.LOCAL_UPLOAD_DIR), name="uploads")
-# # ^ only used while AZURE_STORAGE_CONNECTION_STRING is unset (local testing)
-
-# ============================================================
-# PASTE 2 — at the bottom of main.py:
-# ============================================================
-
-
 def _item_out(item: models.ClothingItem) -> dict:
     return {
         "id": item.id,

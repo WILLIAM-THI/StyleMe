@@ -26,3 +26,18 @@
 .cam-actions .btn { flex: 1; padding: 16px 24px; font-size: 20px; color: #ffffff; background: #333333; border: none; border-radius: 25px; transition: background 0.2s; }
 .cam-actions .btn-save { color: #79f7aa; }
 .cam-actions .btn:hover { background: #3d3d3d; }
+
+/* Wardrobe grid: desktop only, on the left */
+.add-grid { display: none; }
+@media (min-width: 900px) {
+    .wardrobe-body.add-body {
+        display: grid; overflow: hidden;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        grid-template-rows: minmax(0, 1fr);
+        column-gap: 56px;
+    }
+    .grid.add-grid { display: grid; overflow-y: auto; min-height: 0; align-content: start; align-items: start; }
+    /* padding-bottom: 100% makes each tile a square that rows can't squash while the grid scrolls */
+    .add-grid .item { display: block; height: 0; padding-bottom: 100%; aspect-ratio: auto; }
+    .add-side { display: flex; flex-direction: column; gap: 16px; align-self: start; }
+}

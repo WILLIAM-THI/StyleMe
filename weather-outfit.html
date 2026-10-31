@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Weather Based Outfit - Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/wardrobe.css">
+    <link rel="stylesheet" href="css/weather-outfit.css">
+    <link rel="stylesheet" href="css/outfit-view.css">
+    <script>
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard wardrobe-layout">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                Generate Weather Based Outfit
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="weather-outfit.html" class="current" aria-current="page">Generate Weather Based Outfit</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="wardrobe.html">My Wardrobe</a>
+                <a href="generate-outfit.html">Generate Outfit</a>
+                <a href="style-me.html">Style Me</a>
+                <a href="saved-outfits.html">Saved Outfits</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
+        </header>
+
+        <div class="wardrobe-body">
+            <div class="wo">
+                <section class="wx-bar" id="wxBar" data-theme="cloud" aria-label="Current weather">
+                    <span class="wx-bar-icon" id="wxIcon" aria-hidden="true">⛅</span>
+                    <span class="wx-bar-temp" id="wxTemp">--</span>
+                </section>
+
+                <section class="wo-actions">
+                    <button type="button" class="pill-btn pill-gen" id="genBtn">Re/generate</button>
+                    <button type="button" class="pill-btn pill-save" id="saveBtn" disabled>Save Outfit</button>
+                </section>
+
+                <p class="wo-status" id="status" role="status"></p>
+
+                <section class="outfit-stage empty" id="stage" aria-label="Your outfit">
+                    <p>Getting the weather...</p>
+                </section>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/menu.js"></script>
+    <script src="js/outfit-view.js"></script>
+    <script>
+        const wxBar = document.getElementById('wxBar');
+        const wxIcon = document.getElementById('wxIcon');
+        const wxTemp = document.getElementById('wxTemp');
+        const stage = document.getElementById('stage');
+        const genBtn = document.getElementById('genBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusEl = document.getElementById('status');
+
+        let weather = null;   // { temp, label }
+        let current = [];     // the outfit on screen: items from the backend
+        let busy = false;
+
+        function setStatus(text, isError) {
+            statusEl.textContent = text || '';
+            statusEl.className = 'wo-status' + (isError ? ' error' : '');
+        }
+
+        // ----- Weather (Open-Meteo: free, no API key) -----
+        function describeWeather(code, isDay) {
+            if (code === 0) return isDay ? { icon: '☀️', label: 'Clear', theme: 'clear' } : { icon: '🌙', label: 'Clear night', theme: 'night' };
+            if (code <= 2)  return isDay ? { icon: '⛅', label: 'Partly cloudy', theme: 'cloud' } : { icon: '☁️', label: 'Partly cloudy', theme: 'night' };
+            if (code === 3) return { icon: '☁️', label: 'Overcast', theme: 'cloud' };
+            if (code === 45 || code === 48) return { icon: '🌫️', label: 'Foggy', theme: 'fog' };
+            if (code >= 51 && code <= 57) return { icon: '🌦️', label: 'Drizzle', theme: 'rain' };
+            if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { icon: '🌧️', label: 'Rain', theme: 'rain' };
+            if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { icon: '❄️', label: 'Snow', theme: 'snow' };
+            if (code >= 95) return { icon: '⛈️', label: 'Thunderstorm', theme: 'storm' };
+            return { icon: '☁️', label: 'Cloudy', theme: 'cloud' };
+        }
+
+        function weatherProblem(message) {
+            weather = null;
+            wxTemp.textContent = '--';
+            showStageMessage(stage, message);
+            saveBtn.disabled = true;
+        }
+
+        function loadWeather() {
+            return new Promise((resolve) => {
+                // The Location switch on the Settings page turns this off
+                if (localStorage.getItem('styleme_location') === 'off') {
+                    weatherProblem('Location is off in Settings. Turn it on to get a weather based outfit.');
+                    return resolve(null);
+                }
+                if (!navigator.geolocation) {
+                    weatherProblem('This browser can\'t share your location.');
+                    return resolve(null);
+                }
+                showStageMessage(stage, 'Getting the weather...');
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    try {
+                        const { latitude, longitude } = pos.coords;
+                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,is_day&timezone=auto`;
+                        const c = (await (await fetch(url)).json()).current;
+                        const info = describeWeather(c.weather_code, c.is_day === 1);
+                        weather = { temp: Math.round(c.temperature_2m), label: info.label };
+                        wxIcon.textContent = info.icon;
+                        wxTemp.textContent = weather.temp + '°C';
+                        wxBar.dataset.theme = info.theme;
+                        resolve(weather);
+                    } catch (err) {
+                        weatherProblem('Weather unavailable. Press Re/generate to try again.');
+                        resolve(null);
+                    }
+                }, () => {
+                    weatherProblem('Allow location access in your browser, then press Re/generate.');
+                    resolve(null);
+                }, { timeout: 10000, maximumAge: 600000 });
+            });
+        }
+
+        // ----- Outfit -----
+        async function generate() {
+            if (busy) return;
+            busy = true;
+            genBtn.disabled = true;
+            saveBtn.disabled = true;
+            setStatus('');
+
+            try {
+                if (!weather && !(await loadWeather())) return;
+
+                setStatus('Choosing an outfit...');
+                const res = await fetch(`${API_BASE}/api/outfits/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({
+                        temp_c: weather.temp,
+                        condition: weather.label,
+                        previous_item_ids: current.map(i => i.id)
+                    })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    current = data.items;
+                    renderOutfit(stage, current);
+                    saveBtn.textContent = 'Save Outfit';
+                    saveBtn.disabled = false;
+                    setStatus(data.missing.includes('shoes') ? 'Tip: add shoes to your wardrobe to complete your outfits.' : '');
+                } else if (res.status === 401) {
+                    window.location.replace('index.html');
+                } else {
+                    current = [];
+                    showStageMessage(stage, typeof data.detail === 'string' ? data.detail : 'Could not create an outfit.');
+                    setStatus('');
+                }
+            } catch (err) {
+                setStatus('Connection to backend failed.', true);
+            } finally {
+                busy = false;
+                genBtn.disabled = false;
+            }
+        }
+
+        async function save() {
+            if (!current.length) return;
+            saveBtn.disabled = true;
+            try {
+                const res = await fetch(`${API_BASE}/api/outfits`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({
+                        item_ids: current.map(i => i.id),
+                        prompt: weather ? `Weather: ${weather.temp}°C, ${weather.label}` : null
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    saveBtn.textContent = 'Saved ✓';
+                    setStatus(data.message);
+                } else {
+                    saveBtn.disabled = false;
+                    setStatus(typeof data.detail === 'string' ? data.detail : 'Could not save this outfit.', true);
+                }
+            } catch (err) {
+                saveBtn.disabled = false;
+                setStatus('Connection to backend failed.', true);
+            }
+        }
+
+        genBtn.addEventListener('click', generate);
+        saveBtn.addEventListener('click', save);
+        generate();   // make the first outfit as soon as the page opens
+    </script>
+</body>
+</html>

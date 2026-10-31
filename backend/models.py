@@ -60,7 +60,7 @@ class ClothingItem(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
   
-    # Images in Azure Blob Storage, only filenames saved
+    # Images in AWS S3, only filenames saved
     image_filename: Mapped[str] = mapped_column(String(255))
 
     category: Mapped[str] = mapped_column(String(30))

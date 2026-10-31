@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Style Me</title>
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/outfit-view.css">
     <script src="js/config.js"></script>
     <script>
         // Not logged in? Go back to the login page straight away.
@@ -97,10 +98,10 @@
 
     <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Outfit preview" hidden>
         <button class="viewer-close" id="viewerClose" aria-label="Close">&times;</button>
-        <img id="viewerImg" alt="">
-        <span class="viewer-placeholder" id="viewerPh" aria-hidden="true">&#128087;</span>
+        <div class="outfit-stage" id="viewerStage"></div>
     </div>
 
+    <script src="js/outfit-view.js"></script>
     <script src="js/common.js"></script>
     <script>
         const authHeader = () => ({ Authorization: 'Bearer ' + localStorage.getItem('user_token') });

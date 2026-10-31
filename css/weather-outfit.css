@@ -1,0 +1,60 @@
+/* Everything stays phone-sized and centred, also on a wide desktop screen. */
+.wo { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 420px; margin: 0 auto; }
+
+/* Weather bar: big icon on the left, temperature on the right */
+.wx-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    min-height: 100px; padding: 8px 36px 8px 26px;
+    background: #262626; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 28px;
+}
+.wx-bar-icon { font-size: 64px; line-height: 1; }
+.wx-bar-temp { font-size: 38px; font-weight: 300; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.wx-bar[data-theme="clear"] { background: linear-gradient(160deg, #4a4526, #262626); }
+.wx-bar[data-theme="night"] { background: linear-gradient(160deg, #1f2444, #262626); }
+.wx-bar[data-theme="cloud"] { background: linear-gradient(160deg, #37404c, #262626); }
+.wx-bar[data-theme="rain"]  { background: linear-gradient(160deg, #1d3448, #262626); }
+.wx-bar[data-theme="snow"]  { background: linear-gradient(160deg, #40505c, #262626); }
+.wx-bar[data-theme="storm"] { background: linear-gradient(160deg, #35284f, #262626); }
+.wx-bar[data-theme="fog"]   { background: linear-gradient(160deg, #3d3d3d, #262626); }
+
+/* Re/generate and Save Outfit */
+.wo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pill-btn {
+    padding: 18px 8px; font-size: 24px; line-height: 1.1;
+    background: #262626; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 28px;
+    transition: background 0.15s, transform 0.15s;
+}
+.pill-btn:hover:not(:disabled) { background: #303030; }
+.pill-btn:active:not(:disabled) { transform: scale(0.98); }
+.pill-btn:focus-visible { outline: 2px solid #79f7aa; outline-offset: 2px; }
+.pill-btn:disabled { opacity: 0.45; cursor: default; }
+.pill-gen { color: #58a6ff; }
+.pill-save { color: #9be8b8; }
+
+.wo-status { text-align: center; font-size: 15px; color: #bbbbbb; }
+.wo-status:empty { display: none; }
+.wo-status.error { color: #ff8787; }
+
+
+/* Long title: wrap it as "Generate Weather / Based Outfit" on a phone */
+@media (max-width: 480px) {
+    .menu-btn { max-width: 11em; }
+}
+
+/* Desktop: the outfit on the left, the weather and buttons on the right. */
+@media (min-width: 900px) {
+    .wo {
+        max-width: none;
+        display: grid;
+        grid-template-columns: auto 360px;
+        grid-template-rows: auto auto auto 1fr;
+        grid-template-areas: "stage wx" "stage actions" "stage status" "stage .";
+        gap: 14px 72px;
+        justify-content: center;
+        align-items: start;
+    }
+    .wx-bar { grid-area: wx; }
+    .wo-actions { grid-area: actions; }
+    .wo-status { grid-area: status; }
+    .outfit-stage { grid-area: stage; height: calc(100vh - 150px); min-height: 360px; width: auto; aspect-ratio: 3 / 4.1; }
+}
