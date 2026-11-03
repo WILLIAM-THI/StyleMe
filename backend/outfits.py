@@ -6,6 +6,10 @@
 2. Whatever it answers is checked. If the answer is unusable, or there is no
    key, a simple rule-based picker chooses instead, so the page always works.
 
+The Generate Outfit page also passes preferences (occasion, colour, season,
+pattern). They are wishes, not rules: the closest outfit is chosen, and the page
+is told which wishes the wardrobe could not meet.
+
 An outfit is either one dress, or one top plus one bottom, plus shoes if the
 wardrobe has any, outerwear when it is cold or wet, and sometimes an accessory.
 """
@@ -39,33 +43,77 @@ def _is_wet(condition: str) -> bool:
     return any(word in (condition or "").lower() for word in WET_WORDS)
 
 
-def _score(item, temp: float, avoid: set[int]) -> float:
-    """Higher = a better fit for this temperature. Random noise gives variety."""
-    score = random.random()
-    warm = temp >= 18
-    if (item.season == "spring_summer") == warm:
-        score += 1.5
-    category = item.category
+OCCASIONS = ("casual", "smart", "sporty")
+
+
+def _occasion_score(item, occasion) -> float:
+    """The wardrobe doesn't record how dressy an item is, so this goes by the type of garment."""
+    c, p = item.category, item.pattern
+    if occasion == "smart":
+        s = {"pants": 1.5, "skirt": 1, "dress": 1, "long_sleeve_top": 1, "shorts": -3}.get(c, 0)
+        if p == "graphic":
+            s -= 2
+        if p == "solid":
+            s += 1
+        return s
+    if occasion == "sporty":
+        s = {"shorts": 1.5, "short_sleeve_top": 1, "pants": 0.5, "skirt": -1, "dress": -2}.get(c, 0)
+        if p == "graphic":
+            s += 0.5
+        return s
+    return 0
+
+
+def _temp_score(category, temp) -> float:
     if category == "short_sleeve_top":
-        score += 2 if temp >= 22 else (-2 if temp < 16 else 0)
-    elif category == "long_sleeve_top":
-        score += 2 if temp <= 17 else (-2 if temp >= 26 else 0)
-    elif category == "shorts":
-        score += 2 if temp >= 26 else (-3 if temp < 20 else 0)
-    elif category == "skirt":
-        score += 1 if temp >= 22 else (-2 if temp < 16 else 0)
-    elif category == "pants":
-        score += 1 if temp <= 22 else (-1 if temp >= 30 else 0)
+        return 2 if temp >= 22 else (-2 if temp < 16 else 0)
+    if category == "long_sleeve_top":
+        return 2 if temp <= 17 else (-2 if temp >= 26 else 0)
+    if category == "shorts":
+        return 2 if temp >= 26 else (-3 if temp < 20 else 0)
+    if category == "skirt":
+        return 1 if temp >= 22 else (-2 if temp < 16 else 0)
+    if category == "pants":
+        return 1 if temp <= 22 else (-1 if temp >= 30 else 0)
+    return 0
+
+
+def _score(item, temp, avoid: set[int], prefs=None) -> float:
+    """Higher = a better fit. Random noise gives variety.
+
+    temp is None on the Generate Outfit page (no weather); prefs holds the user's wishes.
+    """
+    prefs = prefs or {}
+    score = random.random()
+    if prefs.get("season"):
+        if item.season == prefs["season"]:
+            score += 3
+    elif temp is not None and (item.season == "spring_summer") == (temp >= 18):
+        score += 1.5
+    if temp is not None:
+        score += _temp_score(item.category, temp)
+    if prefs.get("colour") and item.colour == prefs["colour"]:
+        score += 3
+    if prefs.get("pattern") and item.pattern == prefs["pattern"]:
+        score += 3
+    score += _occasion_score(item, prefs.get("occasion"))
     if item.id in avoid:
         score -= 3  # "Regenerate" should give something different if it can
     return score
 
 
-def _best(items, temp, avoid):
-    return max(items, key=lambda i: _score(i, temp, avoid)) if items else None
+def _best(items, temp, avoid, prefs=None):
+    return max(items, key=lambda i: _score(i, temp, avoid, prefs)) if items else None
 
 
-def _rule_based(items, temp, wet, avoid):
+def _unmatched(chosen, prefs) -> list[str]:
+    """Which of the colour / pattern / season wishes no chosen item satisfies."""
+    return [k for k in ("colour", "pattern", "season")
+            if prefs.get(k) and not any(getattr(i, k) == prefs[k] for i in chosen)]
+
+
+def _rule_based(items, temp, wet, avoid, prefs=None):
+    prefs = prefs or {}
     tops = [i for i in items if i.category in TOPS]
     bottoms = [i for i in items if i.category in BOTTOMS]
     dresses = [i for i in items if i.category in DRESSES]
@@ -73,20 +121,36 @@ def _rule_based(items, temp, wet, avoid):
     shoes = [i for i in items if i.category in SHOES]
     accessories = [i for i in items if i.category in ACCESSORIES]
 
-    use_dress = bool(dresses) and (not (tops and bottoms) or (temp >= 16 and random.random() < 0.25))
-    if use_dress:
-        chosen = [_best(dresses, temp, avoid)]
-    elif tops and bottoms:
-        chosen = [_best(tops, temp, avoid), _best(bottoms, temp, avoid)]
+    if prefs:
+        bases = [[d] for d in dresses] + [[t, b] for t in tops for b in bottoms]
+        if len(bases) > 600:
+            bases = random.sample(bases, 600)
+        if not bases:
+            return None
+
+        def base_score(base):
+            total = sum(_score(i, temp, avoid, prefs) for i in base)
+            if len(base) == 1:
+                total *= 2  # a dress fills both the top and bottom slots
+            return total + 4 * (len([k for k in ("colour", "pattern", "season") if prefs.get(k)]) - len(_unmatched(base, prefs)))
+
+        chosen = list(max(bases, key=base_score))
     else:
-        return None
+        use_dress = bool(dresses) and (not (tops and bottoms) or (temp is not None and temp >= 16 and random.random() < 0.25))
+        if use_dress:
+            chosen = [_best(dresses, temp, avoid)]
+        elif tops and bottoms:
+            chosen = [_best(tops, temp, avoid), _best(bottoms, temp, avoid)]
+        else:
+            return None
 
     if shoes:
-        chosen.append(_best(shoes, temp, avoid))
-    if outer and (temp < 18 or wet):
-        chosen.append(_best(outer, temp, avoid))
+        chosen.append(_best(shoes, temp, avoid, prefs))
+    cold = (temp is not None and temp < 18) or (temp is None and prefs.get("season") == "autumn_winter")
+    if outer and (cold or wet):
+        chosen.append(_best(outer, temp, avoid, prefs))
     if accessories and random.random() < 0.4:
-        chosen.append(random.choice(accessories))
+        chosen.append(_best(accessories, temp, avoid, prefs))
     return chosen
 
 
@@ -99,7 +163,7 @@ def _is_valid(chosen) -> bool:
     return (dress == 1 and tops == 0 and bottoms == 0) or (dress == 0 and tops == 1 and bottoms == 1)
 
 
-def _ask_gemini(items, temp, condition, avoid):
+def _ask_gemini(items, temp, condition, avoid, prefs=None):
     client = ai_identify._get_client()
     if client is None:
         return None
@@ -111,8 +175,17 @@ def _ask_gemini(items, temp, condition, avoid):
         f"\nDo NOT choose exactly this combination of ids again: {sorted(avoid)}. Choose a different outfit."
         if avoid else ""
     )
+    if temp is None:
+        setting = "No weather is given."
+    else:
+        setting = f"The weather is {temp:.0f}°C, {condition or 'unknown conditions'}."
+    wishes = ""
+    if prefs:
+        parts = [f"{k}: {v.replace('_', ' ')}" for k, v in prefs.items() if v]
+        if parts:
+            wishes = "The user wants an outfit for these wishes (match as many as the wardrobe allows): " + ", ".join(parts) + ".\n"
     prompt = (
-        f"You are a stylist. The weather is {temp:.0f}°C, {condition or 'unknown conditions'}.\n"
+        f"You are a stylist. {setting}\n{wishes}"
         "Choose ONE outfit from this wardrobe. Each line is: id: category, colour, pattern, best season.\n"
         f"{lines}\n\n"
         "Rules:\n"
@@ -134,17 +207,20 @@ def _ask_gemini(items, temp, condition, avoid):
     return [int(i) for i in data.get("item_ids", [])]
 
 
-def generate(items, temp: float, condition: str, avoid_ids: set[int]):
-    """Returns (chosen_items, missing) or None if the wardrobe can't make an outfit.
+def generate(items, temp, condition: str, avoid_ids: set[int], prefs=None):
+    """Returns (chosen_items, missing, unmatched) or None if the wardrobe can't make an outfit.
 
     `missing` lists what would complete the outfit, e.g. ["shoes"].
+    `unmatched` lists wishes (colour, pattern, season) that no chosen item meets.
+    temp may be None (no weather); prefs is a dict of wishes or None.
     """
+    prefs = {k: v for k, v in (prefs or {}).items() if v}
     wet = _is_wet(condition)
     by_id = {i.id: i for i in items}
     chosen = None
 
     try:
-        ids = _ask_gemini(items, temp, condition, avoid_ids)
+        ids = _ask_gemini(items, temp, condition, avoid_ids, prefs)
         if ids:
             candidate = list({i: by_id[i] for i in ids if i in by_id}.values())
             if _is_valid(candidate) and {i.id for i in candidate} != avoid_ids:
@@ -153,7 +229,7 @@ def generate(items, temp: float, condition: str, avoid_ids: set[int]):
         chosen = None  # any AI problem: just use the simple picker below
 
     if chosen is None:
-        chosen = _rule_based(items, temp, wet, avoid_ids)
+        chosen = _rule_based(items, temp, wet, avoid_ids, prefs)
     if not chosen:
         return None
 
@@ -161,4 +237,4 @@ def generate(items, temp: float, condition: str, avoid_ids: set[int]):
     missing = []
     if not any(i.category in SHOES for i in items):
         missing.append("shoes")
-    return chosen, missing
+    return chosen, missing, _unmatched(chosen, prefs)

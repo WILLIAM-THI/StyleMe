@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Outfit - Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/wardrobe.css">
+    <link rel="stylesheet" href="css/outfit-view.css">
+    <link rel="stylesheet" href="css/weather-outfit.css">
+    <link rel="stylesheet" href="css/generate-outfit.css">
+    <script>
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard wardrobe-layout">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                Generate Outfit
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="generate-outfit.html" class="current" aria-current="page">Generate Outfit</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="wardrobe.html">My Wardrobe</a>
+                <a href="weather-outfit.html">Generate Weather Based Outfit</a>
+                <a href="style-me.html">Style Me</a>
+                <a href="saved-outfits.html">Saved Outfits</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
+        </header>
+
+        <div class="wardrobe-body">
+            <div class="wo">
+                <section class="go-filters" aria-label="Outfit choices">
+                    <div class="go-row"><label for="occasion">Occasion</label><select class="pill" id="occasion"></select></div>
+                    <div class="go-row"><label for="colour">Colour</label><select class="pill" id="colour"></select></div>
+                    <div class="go-row"><label for="season">Season</label><select class="pill" id="season"></select></div>
+                    <div class="go-row"><label for="pattern">Pattern</label><select class="pill" id="pattern"></select></div>
+                </section>
+
+                <section class="wo-actions">
+                    <button type="button" class="pill-btn pill-gen" id="genBtn">Re/generate</button>
+                    <button type="button" class="pill-btn pill-save" id="saveBtn" disabled>Save Outfit</button>
+                </section>
+
+                <p class="wo-status" id="status" role="status"></p>
+
+                <section class="outfit-stage empty" id="stage" aria-label="Your outfit">
+                    <p>Choosing an outfit...</p>
+                </section>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/menu.js"></script>
+    <script src="js/wardrobe-data.js"></script>
+    <script src="js/outfit-view.js"></script>
+    <script>
+        const stage = document.getElementById('stage');
+        const genBtn = document.getElementById('genBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusEl = document.getElementById('status');
+        const occasionSel = document.getElementById('occasion');
+        const colourSel = document.getElementById('colour');
+        const seasonSel = document.getElementById('season');
+        const patternSel = document.getElementById('pattern');
+
+    
+        const ANY = ['', 'Any'];
+        const OCCASION_OPTIONS = [['casual', 'Casual'], ['smart', 'Smart'], ['sporty', 'Sporty']];
+        fillSelect(occasionSel, OCCASION_OPTIONS, 'casual');
+        fillSelect(colourSel, [ANY, ...COLOUR_OPTIONS], '');
+        fillSelect(seasonSel, [ANY, ...SEASON_OPTIONS], '');
+        fillSelect(patternSel, [ANY, ...PATTERN_OPTIONS], '');
+
+        let current = [];     
+        let busy = false;
+
+        function setStatus(text, isError) {
+            statusEl.textContent = text || '';
+            statusEl.className = 'wo-status' + (isError ? ' error' : '');
+        }
+
+        function label(select) { return select.options[select.selectedIndex].textContent; }
+
+        // A short description saved with the outfit, e.g. "Casual, Black, Floral"
+        function wishesText() {
+            return [occasionSel, colourSel, seasonSel, patternSel]
+                .filter(s => s.value).map(label).join(', ');
+        }
+
+        async function generate() {
+            if (busy) return;
+            busy = true;
+            genBtn.disabled = true;
+            saveBtn.disabled = true;
+            setStatus('Choosing an outfit...');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/outfits/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({
+                        occasion: occasionSel.value || null,
+                        colour: colourSel.value || null,
+                        season: seasonSel.value || null,
+                        pattern: patternSel.value || null,
+                        previous_item_ids: current.map(i => i.id)
+                    })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    current = data.items;
+                    renderOutfit(stage, current);
+                    saveBtn.textContent = 'Save Outfit';
+                    saveBtn.disabled = false;
+
+                    const notes = [];
+                    const names = { colour: colourSel, pattern: patternSel, season: seasonSel };
+                    const unmet = (data.unmatched || []).map(k => label(names[k]).toLowerCase());
+                    if (unmet.length) notes.push(`Couldn't include a ${unmet.join(' or ')} item, so this is the closest match.`);
+                    if (data.missing.includes('shoes')) notes.push('Tip: add shoes to your wardrobe to complete your outfits.');
+                    setStatus(notes.join(' '));
+                } else if (res.status === 401) {
+                    window.location.replace('index.html');
+                } else {
+                    current = [];
+                    showStageMessage(stage, typeof data.detail === 'string' ? data.detail : 'Could not create an outfit.');
+                    setStatus('');
+                }
+            } catch (err) {
+                setStatus('Connection to backend failed.', true);
+            } finally {
+                busy = false;
+                genBtn.disabled = false;
+            }
+        }
+
+        async function save() {
+            if (!current.length) return;
+            saveBtn.disabled = true;
+            try {
+                const res = await fetch(`${API_BASE}/api/outfits`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({ item_ids: current.map(i => i.id), prompt: wishesText() || null })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    saveBtn.textContent = 'Saved ✓';
+                    setStatus(data.message);
+                } else {
+                    saveBtn.disabled = false;
+                    setStatus(typeof data.detail === 'string' ? data.detail : 'Could not save this outfit.', true);
+                }
+            } catch (err) {
+                saveBtn.disabled = false;
+                setStatus('Connection to backend failed.', true);
+            }
+        }
+
+        genBtn.addEventListener('click', generate);
+        saveBtn.addEventListener('click', save);
+        generate();   // make the first outfit as soon as the page opens
+    </script>
+</body>
+</html>

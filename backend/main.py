@@ -1,4 +1,3 @@
-"""Style Me backend. Run with:  uvicorn main:app --reload"""
 import os
 from concurrent.futures import ThreadPoolExecutor
 
@@ -23,7 +22,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Style Me API")
 
-# Lets your website (a different address) call this backend from the browser.
+
 origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
 
@@ -86,7 +85,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     return {"message": f"Welcome back, {user.name}!", "token": security.create_token(user.id)}
 
 
-# ---------- Protecting routes ----------
+
 bearer = HTTPBearer()
 
 
@@ -265,9 +264,13 @@ def delete_clothing_item(item_id: int, user: models.User = Depends(get_current_u
 
 # ---------- Outfits ----------
 class GenerateOutfitRequest(BaseModel):
-    temp_c: float = Field(ge=-60, le=60)
+    temp_c: float | None = Field(default=None, ge=-60, le=60) 
     condition: str = Field(default="", max_length=40)
-    previous_item_ids: list[int] = Field(default_factory=list, max_length=20)  # so "Regenerate" gives something new
+    occasion: str | None = None
+    colour: str | None = None
+    season: str | None = None
+    pattern: str | None = None
+    previous_item_ids: list[int] = Field(default_factory=list, max_length=20)  # "Regenerate" gives something new
 
 
 @app.post("/api/outfits/generate")
@@ -278,20 +281,26 @@ def generate_outfit(
 ):
     """Suggests an outfit from the user's wardrobe. Nothing is saved until they press Save."""
     items = list(db.scalars(select(models.ClothingItem).where(models.ClothingItem.user_id == user.id)).all())
+    prefs = {
+        "occasion": body.occasion if body.occasion in outfits.OCCASIONS else None,
+        "colour": body.colour if body.colour in models.COLOURS else None,
+        "season": body.season if body.season in models.SEASONS else None,
+        "pattern": body.pattern if body.pattern in models.PATTERNS else None,
+    }
 
     # If a chosen item's photo file is missing, leave that item out and choose again.
     skipped: set[int] = set()
     for _ in range(5):
         pool = [i for i in items if i.id not in skipped]
-        result = outfits.generate(pool, body.temp_c, body.condition, set(body.previous_item_ids))
+        result = outfits.generate(pool, body.temp_c, body.condition, set(body.previous_item_ids), prefs)
         if result is None:
             break
-        chosen, missing = result
+        chosen, missing, unmatched = result
         with ThreadPoolExecutor() as executor:
             present = list(executor.map(lambda i: storage.image_exists(i.image_filename), chosen))
         gone = [i for i, ok in zip(chosen, present) if not ok]
         if not gone:
-            return {"items": [_item_out(i) for i in chosen], "missing": missing}
+            return {"items": [_item_out(i) for i in chosen], "missing": missing, "unmatched": unmatched}
         skipped.update(i.id for i in gone)
 
     if skipped:
@@ -334,7 +343,7 @@ def save_outfit(
     if len(found) != len(wanted):  # an id that doesn't exist, or belongs to someone else
         raise HTTPException(status_code=400, detail="Some of those items could not be found.")
 
-    # Saving the same combination twice would just clutter their Saved Outfits.
+    # Prevents saving the same combination.
     for existing in db.scalars(select(models.Outfit).where(models.Outfit.user_id == user.id)).all():
         if {i.id for i in existing.items} == wanted:
             return {"id": existing.id, "message": "This outfit is already saved."}

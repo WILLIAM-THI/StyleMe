@@ -7,6 +7,8 @@
 
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; }
 
+.edit-body .add-status { font-size: 15px; color: #aaaaaa; line-height: 1.4; margin-bottom: 16px; }
+
 /* Desktop: photo on the left, details on the right */
 @media (min-width: 900px) {
     .wardrobe-body.edit-body {
