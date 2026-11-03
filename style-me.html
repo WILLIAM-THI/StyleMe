@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style Me</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/wardrobe.css">
+    <link rel="stylesheet" href="css/outfit-view.css">
+    <link rel="stylesheet" href="css/weather-outfit.css">
+    <link rel="stylesheet" href="css/style-me.css">
+    <script>
+        if (!localStorage.getItem('user_token')) window.location.replace('index.html');
+    </script>
+</head>
+<body>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="dashboard wardrobe-layout">
+
+        <header class="header">
+            <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu">
+                Style Me
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>
+            </button>
+
+            <nav class="menu" id="menu" aria-label="Main menu">
+                <a href="style-me.html" class="current" aria-current="page">Style Me</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="wardrobe.html">My Wardrobe</a>
+                <a href="weather-outfit.html">Generate Weather Based Outfit</a>
+                <a href="generate-outfit.html">Generate Outfit</a>
+                <a href="saved-outfits.html">Saved Outfits</a>
+                <button class="menu-close" id="menuClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </nav>
+
+            <a class="settings-btn" href="settings.html" aria-label="Settings">&#9881;&#xFE0E;</a>
+        </header>
+
+        <div class="wardrobe-body">
+            <div class="wo">
+                <textarea class="sm-prompt" id="prompt" maxlength="300" aria-label="How you want to be styled"
+                    placeholder="Tell me how you want to be styled:&#10;A smart casual outfit for a coffee meeting."></textarea>
+
+                <section class="wo-actions">
+                    <button type="button" class="pill-btn pill-gen" id="genBtn">Re/generate</button>
+                    <button type="button" class="pill-btn pill-save" id="saveBtn" disabled>Save Outfit</button>
+                </section>
+
+                <p class="wo-status" id="status" role="status"></p>
+
+                <section class="outfit-stage empty" id="stage" aria-label="Your outfit">
+                    <p>Describe what you'd like to wear, then press Re/generate.</p>
+                </section>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/menu.js"></script>
+    <script src="js/outfit-view.js"></script>
+    <script>
+        const stage = document.getElementById('stage');
+        const genBtn = document.getElementById('genBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusEl = document.getElementById('status');
+        const promptBox = document.getElementById('prompt');
+
+        let current = [];     // the outfit on screen: items from the backend
+        let usedPrompt = '';  // the words that made it (so Save keeps the right ones)
+        let busy = false;
+
+        function setStatus(text, isError) {
+            statusEl.textContent = text || '';
+            statusEl.className = 'wo-status' + (isError ? ' error' : '');
+        }
+
+        async function generate() {
+            if (busy) return;
+            const text = promptBox.value.trim();
+            if (text.length < 3) {
+                setStatus('Write a few words about what you want first, for example "a smart casual outfit for a coffee meeting".', true);
+                promptBox.focus();
+                return;
+            }
+            // A new sentence starts fresh; the same sentence again should give something different.
+            const previous = text === usedPrompt ? current.map(i => i.id) : [];
+
+            busy = true;
+            genBtn.disabled = true;
+            saveBtn.disabled = true;
+            setStatus('Choosing an outfit...');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/outfits/style`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({ prompt: text, previous_item_ids: previous })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    current = data.items;
+                    usedPrompt = text;
+                    renderOutfit(stage, current);
+                    saveBtn.textContent = 'Save Outfit';
+                    saveBtn.disabled = false;
+                    setStatus(data.missing.includes('shoes') ? 'Tip: add shoes to your wardrobe to complete your outfits.' : '');
+                } else if (res.status === 401) {
+                    window.location.replace('index.html');
+                } else {
+                    current = [];
+                    showStageMessage(stage, typeof data.detail === 'string' ? data.detail : 'Could not create an outfit.');
+                    setStatus('');
+                }
+            } catch (err) {
+                setStatus('Connection to backend failed.', true);
+            } finally {
+                busy = false;
+                genBtn.disabled = false;
+            }
+        }
+
+        async function save() {
+            if (!current.length) return;
+            saveBtn.disabled = true;
+            try {
+                const res = await fetch(`${API_BASE}/api/outfits`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeader() },
+                    body: JSON.stringify({ item_ids: current.map(i => i.id), prompt: usedPrompt.slice(0, 200) })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    saveBtn.textContent = 'Saved ✓';
+                    setStatus(data.message);
+                } else {
+                    saveBtn.disabled = false;
+                    setStatus(typeof data.detail === 'string' ? data.detail : 'Could not save this outfit.', true);
+                }
+            } catch (err) {
+                saveBtn.disabled = false;
+                setStatus('Connection to backend failed.', true);
+            }
+        }
+
+        genBtn.addEventListener('click', generate);
+        saveBtn.addEventListener('click', save);
+        // Ctrl+Enter (or Cmd+Enter) in the box is a shortcut for Re/generate
+        promptBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); generate(); } });
+    </script>
+</body>
+</html>

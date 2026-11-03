@@ -22,11 +22,11 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Style Me API")
 
-
+# Lets website (a different address) call this backend from the browser.
 origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
 
-# Only used while S3_BUCKET is unset (testing on your own computer): serves saved photos.
+# Only used while S3_BUCKET is unset (testing on own computer): serves saved photos.
 storage.LOCAL_UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=storage.LOCAL_UPLOAD_DIR), name="uploads")
 
@@ -85,7 +85,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     return {"message": f"Welcome back, {user.name}!", "token": security.create_token(user.id)}
 
 
-
+# ---------- Protecting routes ----------
 bearer = HTTPBearer()
 
 
@@ -140,7 +140,7 @@ def delete_account(
     if not security.verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Password is incorrect.")
 
-    # Remember the photo filenames first, because the rows are about to be deleted.
+    # Remember the photo filenames first, because the rows will be deleted.
     photo_names = db.scalars(
         select(models.ClothingItem.image_filename).where(models.ClothingItem.user_id == user.id)
     ).all()
@@ -264,8 +264,9 @@ def delete_clothing_item(item_id: int, user: models.User = Depends(get_current_u
 
 # ---------- Outfits ----------
 class GenerateOutfitRequest(BaseModel):
-    temp_c: float | None = Field(default=None, ge=-60, le=60) 
+    temp_c: float | None = Field(default=None, ge=-60, le=60)   # None on the Generate Outfit page (no weather)
     condition: str = Field(default="", max_length=40)
+    # Wishes from the Generate Outfit page. Anything not in the allowed lists is ignored.
     occasion: str | None = None
     colour: str | None = None
     season: str | None = None
@@ -314,6 +315,46 @@ def generate_outfit(
     )
 
 
+class StyleOutfitRequest(BaseModel):
+    prompt: str = Field(min_length=3, max_length=300)           # e.g. "A smart casual outfit for a coffee meeting"
+    previous_item_ids: list[int] = Field(default_factory=list, max_length=20)
+
+
+@app.post("/api/outfits/style")
+def style_outfit(
+    body: StyleOutfitRequest,
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Suggests an outfit from a sentence the user typed. Nothing is saved until they press Save."""
+    items = list(db.scalars(select(models.ClothingItem).where(models.ClothingItem.user_id == user.id)).all())
+
+    # If a chosen item's photo file is missing, leave that item out and choose again.
+    skipped: set[int] = set()
+    for _ in range(5):
+        pool = [i for i in items if i.id not in skipped]
+        result = outfits.generate_from_text(pool, body.prompt.strip(), set(body.previous_item_ids))
+        if result is None:
+            break
+        chosen, missing, _unmatched = result
+        with ThreadPoolExecutor() as executor:
+            present = list(executor.map(lambda i: storage.image_exists(i.image_filename), chosen))
+        gone = [i for i, ok in zip(chosen, present) if not ok]
+        if not gone:
+            return {"items": [_item_out(i) for i in chosen], "missing": missing}
+        skipped.update(i.id for i in gone)
+
+    if skipped:
+        raise HTTPException(
+            status_code=400,
+            detail="Some wardrobe photos can't be found. Delete the blank items on My Wardrobe, then try again.",
+        )
+    raise HTTPException(
+        status_code=400,
+        detail="Add at least a top and bottoms (or a dress) to your wardrobe first.",
+    )
+
+
 class SaveOutfitRequest(BaseModel):
     item_ids: list[int] = Field(min_length=1, max_length=8)
     prompt: str | None = Field(default=None, max_length=200)   # e.g. "Weather: 12°C, Rain"
@@ -343,7 +384,7 @@ def save_outfit(
     if len(found) != len(wanted):  # an id that doesn't exist, or belongs to someone else
         raise HTTPException(status_code=400, detail="Some of those items could not be found.")
 
-    # Prevents saving the same combination.
+    # Prevent the same combination.
     for existing in db.scalars(select(models.Outfit).where(models.Outfit.user_id == user.id)).all():
         if {i.id for i in existing.items} == wanted:
             return {"id": existing.id, "message": "This outfit is already saved."}

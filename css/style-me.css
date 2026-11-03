@@ -1,0 +1,16 @@
+.sm-prompt {
+    width: 100%; min-height: 230px; padding: 16px 18px; resize: vertical;
+    font-size: 22px; line-height: 1.35; color: #ffffff;
+    background: #383838; border: 2px solid #111111; border-radius: 18px; outline: none;
+}
+.sm-prompt::placeholder { color: #bdbdbd; }
+.sm-prompt:focus { border-color: #79f7aa; }
+
+@media (max-width: 480px) {
+    .sm-prompt { font-size: 20px; }
+}
+
+/* Desktop*/
+@media (min-width: 900px) {
+    .sm-prompt { grid-area: wx; min-height: 200px; font-size: 20px; }
+}

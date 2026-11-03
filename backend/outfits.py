@@ -163,7 +163,7 @@ def _is_valid(chosen) -> bool:
     return (dress == 1 and tops == 0 and bottoms == 0) or (dress == 0 and tops == 1 and bottoms == 1)
 
 
-def _ask_gemini(items, temp, condition, avoid, prefs=None):
+def _ask_gemini(items, temp, condition, avoid, prefs=None, request=None):
     client = ai_identify._get_client()
     if client is None:
         return None
@@ -184,6 +184,10 @@ def _ask_gemini(items, temp, condition, avoid, prefs=None):
         parts = [f"{k}: {v.replace('_', ' ')}" for k, v in prefs.items() if v]
         if parts:
             wishes = "The user wants an outfit for these wishes (match as many as the wardrobe allows): " + ", ".join(parts) + ".\n"
+    if request:
+        # The user's own words. They only describe the outfit wanted; the reply is checked afterwards,
+        # and it can only ever be a list of ids from this wardrobe.
+        wishes += f'The user asked for: "{request}"\nFollow that request as closely as the wardrobe allows.\n'
     prompt = (
         f"You are a stylist. {setting}\n{wishes}"
         "Choose ONE outfit from this wardrobe. Each line is: id: category, colour, pattern, best season.\n"
@@ -207,7 +211,7 @@ def _ask_gemini(items, temp, condition, avoid, prefs=None):
     return [int(i) for i in data.get("item_ids", [])]
 
 
-def generate(items, temp, condition: str, avoid_ids: set[int], prefs=None):
+def generate(items, temp, condition: str, avoid_ids: set[int], prefs=None, request=None):
     """Returns (chosen_items, missing, unmatched) or None if the wardrobe can't make an outfit.
 
     `missing` lists what would complete the outfit, e.g. ["shoes"].
@@ -220,7 +224,7 @@ def generate(items, temp, condition: str, avoid_ids: set[int], prefs=None):
     chosen = None
 
     try:
-        ids = _ask_gemini(items, temp, condition, avoid_ids, prefs)
+        ids = _ask_gemini(items, temp, condition, avoid_ids, None if request else prefs, request)
         if ids:
             candidate = list({i: by_id[i] for i in ids if i in by_id}.values())
             if _is_valid(candidate) and {i.id for i in candidate} != avoid_ids:
@@ -238,3 +242,58 @@ def generate(items, temp, condition: str, avoid_ids: set[int], prefs=None):
     if not any(i.category in SHOES for i in items):
         missing.append("shoes")
     return chosen, missing, _unmatched(chosen, prefs)
+
+
+
+# ---------- Style Me: an outfit from a sentence the user typed ----------
+COLOUR_WORDS = {
+    "black": "black", "white": "white", "grey": "grey", "gray": "grey", "beige": "beige", "cream": "beige",
+    "brown": "brown", "red": "red", "orange": "orange", "yellow": "yellow", "green": "green", "blue": "blue",
+    "navy": "navy", "purple": "purple", "pink": "pink", "colourful": "multicolour", "colorful": "multicolour",
+}
+PATTERN_WORDS = {
+    "striped": "striped", "stripes": "striped", "stripe": "striped", "checked": "checked", "check": "checked",
+    "plaid": "checked", "checkered": "checked", "floral": "floral", "flowers": "floral", "flowery": "floral",
+    "spotted": "spotted", "polka": "spotted", "dots": "spotted", "graphic": "graphic", "plain": "solid", "solid": "solid",
+}
+SMART_WORDS = {"smart", "formal", "work", "office", "meeting", "interview", "business", "dinner", "date",
+               "wedding", "elegant", "dressy", "professional"}
+SPORTY_WORDS = {"gym", "workout", "sport", "sporty", "run", "running", "training", "active", "athletic", "hike", "hiking"}
+CASUAL_WORDS = {"casual", "relaxed", "everyday", "chill", "weekend", "lounge", "comfy"}
+# word -> a typical temperature in °C, checked from hottest to coldest
+TEMP_WORDS = [
+    ({"hot", "scorching", "heatwave", "boiling"}, 32),
+    ({"warm", "summer", "sunny", "beach"}, 26),
+    ({"mild"}, 20),
+    ({"cool", "chilly", "fresh", "autumn", "fall"}, 13),
+    ({"cold", "freezing", "winter", "snow", "snowy", "frosty"}, 6),
+]
+WARM_SEASON_WORDS = {"hot", "warm", "summer", "spring", "sunny", "beach"}
+COOL_SEASON_WORDS = {"cold", "cool", "chilly", "freezing", "winter", "autumn", "fall", "snow", "snowy", "frosty"}
+WET_TEXT_WORDS = {"rain", "rainy", "raining", "wet", "drizzle", "storm", "stormy", "snow", "snowy"}
+
+
+def read_request(text: str):
+    """Pulls simple wishes out of a sentence. Used when Gemini isn't available, and to
+    guess the weather the person has in mind. Returns (temp, condition, prefs)."""
+    import re
+    words = re.findall(r"[a-z]+", (text or "").lower())
+    wordset = set(words)
+
+    temp = next((t for group, t in TEMP_WORDS if wordset & group), None)
+    condition = "Rain" if wordset & WET_TEXT_WORDS else ""
+    prefs = {
+        "colour": next((COLOUR_WORDS[w] for w in words if w in COLOUR_WORDS), None),
+        "pattern": next((PATTERN_WORDS[w] for w in words if w in PATTERN_WORDS), None),
+        "season": ("spring_summer" if wordset & WARM_SEASON_WORDS
+                   else "autumn_winter" if wordset & COOL_SEASON_WORDS else None),
+        "occasion": ("smart" if wordset & SMART_WORDS else "sporty" if wordset & SPORTY_WORDS
+                     else "casual" if wordset & CASUAL_WORDS else None),
+    }
+    return temp, condition, {k: v for k, v in prefs.items() if v}
+
+
+def generate_from_text(items, text: str, avoid_ids: set[int]):
+    """Same return value as generate(). Gemini reads the sentence; without it, read_request() does."""
+    temp, condition, prefs = read_request(text)
+    return generate(items, temp, condition, avoid_ids, prefs, request=text)
