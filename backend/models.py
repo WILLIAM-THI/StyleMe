@@ -6,13 +6,31 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
 # Allowed values for the clothing traits. The AI's answers should be mapped onto these.
-CATEGORIES = ["short_sleeve_top", "long_sleeve_top", "pants", "shorts", "skirt", "dress", "outerwear", "shoes", "accessory"]
+CATEGORIES = [
+    # tops
+    "short_sleeve_top", "long_sleeve_top", "t_shirt", "button_up_shirt", "singlet", "jumper",
+    # bottoms
+    "pants", "jeans", "shorts", "skirt",
+    "dress",
+    # outerwear
+    "outerwear", "jacket", "coat", "vest",
+    "shoes",
+    # accessories
+    "accessory", "hat", "sunglasses", "glasses", "necklace", "watch", "bracelet", "ring",
+    "earrings", "scarf", "gloves", "belt", "bag", "tie",
+]
 COLOURS = [
     "black", "white", "grey", "beige", "brown", "red", "orange",
     "yellow", "green", "blue", "navy", "purple", "pink", "multicolour",
 ]
-PATTERNS = ["solid", "striped", "checked", "floral", "spotted", "graphic", "other"]
+PATTERNS = [
+    "solid", "striped", "checked", "floral", "spotted", "graphic", "other",
+    "plaid", "paisley", "camouflage", "animal_print", "tie_dye", "geometric",
+    "textured", "denim", "lace", "logo",
+]
 SEASONS = ["spring_summer", "autumn_winter"]
+# How dressy an item is: casual, smart (office, dinner), formal (events), sporty (gym, active)
+OCCASIONS = ["casual", "smart", "formal", "sporty"]
 
 
 def _in_list(column: str, values: list[str]) -> str:
@@ -54,6 +72,7 @@ class ClothingItem(Base):
         CheckConstraint(_in_list("colour", COLOURS), name="ck_item_colour"),
         CheckConstraint(_in_list("pattern", PATTERNS), name="ck_item_pattern"),
         CheckConstraint(_in_list("season", SEASONS), name="ck_item_season"),
+        CheckConstraint(_in_list("occasion", OCCASIONS), name="ck_item_occasion"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -67,6 +86,9 @@ class ClothingItem(Base):
     colour: Mapped[str] = mapped_column(String(30))
     pattern: Mapped[str] = mapped_column(String(30), default="solid")
     season: Mapped[str] = mapped_column(String(20))
+    occasion: Mapped[str] = mapped_column(String(20), default="casual", server_default="casual")
+    # A short AI-written description of the item. Used when generating outfits, never shown to the user.
+    description: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     owner: Mapped["User"] = relationship(back_populates="items")

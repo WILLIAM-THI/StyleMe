@@ -163,6 +163,7 @@ def _item_out(item: models.ClothingItem) -> dict:
         "colour": item.colour,
         "pattern": item.pattern,
         "season": item.season,
+        "occasion": item.occasion,
     }
 
 
@@ -194,6 +195,8 @@ async def add_clothing_item(
         colour=traits["colour"],
         pattern=traits["pattern"],
         season=traits["season"],
+        occasion=traits["occasion"],
+        description=traits["description"],
     )
     db.add(item)
     db.commit()
@@ -228,6 +231,7 @@ class UpdateItemRequest(BaseModel):
     colour: str
     pattern: str
     season: str
+    occasion: str | None = None  # older pages don't send it; the saved one is kept
 
 
 @app.put("/api/wardrobe/{item_id}")
@@ -247,7 +251,12 @@ def update_clothing_item(
         if getattr(body, field) not in allowed:
             raise HTTPException(status_code=400, detail=f"'{getattr(body, field)}' is not a valid {field}.")
 
+    if body.occasion is not None and body.occasion not in models.OCCASIONS:
+        raise HTTPException(status_code=400, detail=f"'{body.occasion}' is not a valid occasion.")
+
     item.category, item.colour, item.pattern, item.season = body.category, body.colour, body.pattern, body.season
+    if body.occasion is not None:
+        item.occasion = body.occasion
     db.commit()
     return _item_out(item)
 

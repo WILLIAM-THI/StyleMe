@@ -19,6 +19,8 @@ FALLBACK = {
     "colour": models.COLOURS[0],
     "pattern": "solid",
     "season": models.SEASONS[0],
+    "occasion": "casual",
+    "description": None,
 }
 
 _client = None
@@ -36,8 +38,9 @@ def _get_client():
 
 
 def identify_clothing(image_bytes: bytes, media_type: str = "image/jpeg") -> dict:
-    """Returns {"category", "colour", "pattern", "season"}, each guaranteed
-    to be one of the allowed values in models.py."""
+    """Returns {"category", "colour", "pattern", "season", "occasion", "description"}.
+    The first five are guaranteed to be one of the allowed values in models.py;
+    description is a short piece of text (or None if the AI gave none)."""
     client = _get_client()
     if client is None:
         return dict(FALLBACK)
@@ -48,7 +51,12 @@ def identify_clothing(image_bytes: bytes, media_type: str = "image/jpeg") -> dic
         f'"category": one of {models.CATEGORIES}\n'
         f'"colour": the closest one of {models.COLOURS}\n'
         f'"pattern": one of {models.PATTERNS}\n'
-        f'"season": one of {models.SEASONS} (which season the item best suits)'
+        f'"season": one of {models.SEASONS} (which season the item best suits)\n'
+        f'"occasion": one of {models.OCCASIONS} (how dressy the item is: casual for everyday, '
+        'smart for office or dinner, formal for events and weddings, sporty for gym or active wear)\n'
+        '"description": one short sentence (under 200 characters) describing the item for a stylist: '
+        'its type, material, fit, style and details, e.g. "Navy wool blazer, slim fit, notch lapel". '
+        'Do not repeat the colour or pattern words unless they matter.'
     )
 
     try:
@@ -71,9 +79,12 @@ def identify_clothing(image_bytes: bytes, media_type: str = "image/jpeg") -> dic
             ("colour", models.COLOURS),
             ("pattern", models.PATTERNS),
             ("season", models.SEASONS),
+            ("occasion", models.OCCASIONS),
         ):
             if result.get(field) not in allowed:
                 result[field] = FALLBACK[field]
+        description = result.get("description")
+        result["description"] = description.strip()[:300] or None if isinstance(description, str) else None
         return result
     except Exception:
         return dict(FALLBACK)
