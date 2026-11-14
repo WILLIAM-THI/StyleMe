@@ -60,10 +60,10 @@
                     <span id="locLabel">Location</span>
                     <label class="switch"><input type="checkbox" id="locToggle" role="switch" aria-labelledby="locLabel"><span class="slider"></span></label>
                 </div>
-                <div class="toggle-row">
+                <!--<div class="toggle-row">
                     <span id="notifLabel">Notifications</span>
                     <label class="switch"><input type="checkbox" id="notifToggle" role="switch" aria-labelledby="notifLabel"><span class="slider"></span></label>
-                </div>
+                </div>-->
                 <p class="msg" id="prefMsg" role="status"></p>
             </div>
 
@@ -147,11 +147,11 @@
 
         // ----- Location and notification switches  -----
         const locToggle = document.getElementById('locToggle');
-        const notifToggle = document.getElementById('notifToggle');
+        //const notifToggle = document.getElementById('notifToggle');
         const prefMsg = document.getElementById('prefMsg');
 
         locToggle.checked = localStorage.getItem('styleme_location') !== 'off';        // on by default
-        notifToggle.checked = localStorage.getItem('styleme_notifications') === 'on';  // off by default
+        //notifToggle.checked = localStorage.getItem('styleme_notifications') === 'on';  // off by default
 
         locToggle.addEventListener('change', () => {
             localStorage.setItem('styleme_location', locToggle.checked ? 'on' : 'off');
@@ -165,9 +165,9 @@
                 );
             }
         });
-        notifToggle.addEventListener('change', () => {
-            localStorage.setItem('styleme_notifications', notifToggle.checked ? 'on' : 'off');
-        });
+        //notifToggle.addEventListener('change', () => {
+            //localStorage.setItem('styleme_notifications', notifToggle.checked ? 'on' : 'off');
+        //});
 
         // ----- Delete account -----
         const deleteDialog = document.getElementById('deleteDialog');

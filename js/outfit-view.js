@@ -1,6 +1,7 @@
-const OUTFIT_TOPS = ['short_sleeve_top', 'long_sleeve_top', 't_shirt', 'button_up_shirt', 'singlet', 'jumper'];
+const OUTFIT_TOPS = ['short_sleeve_top', 'long_sleeve_top', 't_shirt', 'button_up_shirt', 'singlet', 'jumper', 'hoodie', 'sweatshirt', 'blouse', 'tank_top'];
 const OUTFIT_BOTTOMS = ['pants', 'jeans', 'shorts', 'skirt'];
 const OUTFIT_OUTERWEAR = ['outerwear', 'jacket', 'coat', 'vest'];
+const OUTFIT_SHOES = ['shoes', 'slippers', 'boots', 'heels', 'flats', 'sandals', 'trainers'];
 const OUTFIT_ACCESSORIES = ['accessory', 'hat', 'sunglasses', 'glasses', 'necklace', 'watch', 'bracelet',
     'ring', 'earrings', 'scarf', 'gloves', 'belt', 'bag', 'tie'];
 
@@ -24,7 +25,7 @@ function renderOutfit(stage, items) {
     pick(['dress']).forEach(i => figure.appendChild(makeImg(i, 'p-dress')));
     pick(OUTFIT_TOPS).forEach(i => figure.appendChild(makeImg(i, 'p-top')));
     pick(OUTFIT_BOTTOMS).forEach(i => figure.appendChild(makeImg(i, 'p-bottom')));
-    pick(['shoes']).forEach(i => figure.appendChild(makeImg(i, 'p-shoes')));
+    pick(OUTFIT_SHOES).forEach(i => figure.appendChild(makeImg(i, 'p-shoes')));
     stage.appendChild(figure);
 
     // Side column: outerwear and accessories, only if the outfit has any

@@ -8,13 +8,13 @@ from database import Base
 # Allowed values for the clothing traits. The AI's answers should be mapped onto these.
 CATEGORIES = [
     # tops
-    "short_sleeve_top", "long_sleeve_top", "t_shirt", "button_up_shirt", "singlet", "jumper",
+    "short_sleeve_top", "long_sleeve_top", "t_shirt", "button_up_shirt", "singlet", "jumper", "hoodie", "sweatshirt", "blouse", "tank_top",
     # bottoms
     "pants", "jeans", "shorts", "skirt",
     "dress",
     # outerwear
     "outerwear", "jacket", "coat", "vest",
-    "shoes",
+    "shoes", "slippers", "boots", "heels", "flats", "sandals", "trainers",
     # accessories
     "accessory", "hat", "sunglasses", "glasses", "necklace", "watch", "bracelet", "ring",
     "earrings", "scarf", "gloves", "belt", "bag", "tie",

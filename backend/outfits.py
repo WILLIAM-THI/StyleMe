@@ -20,14 +20,14 @@ import re
 import ai_identify
 import models
 
-TOPS = {"short_sleeve_top", "long_sleeve_top", "t_shirt", "button_up_shirt", "singlet", "jumper"}
+TOPS = {"short_sleeve_top", "long_sleeve_top", "t_shirt", "button_up_shirt", "singlet", "jumper", "hoodie", "sweatshirt", "blouse", "tank_top",}
 BOTTOMS = {"pants", "jeans", "shorts", "skirt"}
 DRESSES = {"dress"}
 OUTERWEAR = {"outerwear", "jacket", "coat", "vest"}
-SHOES = {"shoes"}
+SHOES = {"shoes", "slippers", "boots", "heels", "flats", "sandals", "trainers",}
 ACCESSORIES = {
     "accessory", "hat", "sunglasses", "glasses", "necklace", "watch", "bracelet", "ring",
-    "earrings", "scarf", "gloves", "belt", "bag", "tie",
+    "earrings", "scarf", "gloves", "belt", "bag", "tie"
 }
 MAX_ACCESSORIES = 3
 
@@ -85,11 +85,11 @@ def _text_score(item, words) -> float:
 def _temp_score(category, temp) -> float:
     if temp is None:
         return 0
-    if category in ("short_sleeve_top", "t_shirt"):
+    if category in ("short_sleeve_top", "t_shirt", "blouse"):
         return 2 if temp >= 22 else (-2 if temp < 16 else 0)
-    if category == "singlet":
+    if category in ("singlet", "tank_top"):
         return 2 if temp >= 26 else (-3 if temp < 20 else 0)
-    if category == "jumper":
+    if category in ("jumper", "hoodie", "sweatshirt"):
         return 2 if temp <= 17 else (-3 if temp >= 24 else 0)
     if category == "coat":
         return 2 if temp <= 12 else (-3 if temp >= 20 else 0)
@@ -113,6 +113,10 @@ def _temp_score(category, temp) -> float:
         return 1 if temp >= 22 else (-2 if temp < 16 else 0)
     if category in ("pants", "jeans"):
         return 1 if temp <= 22 else (-1 if temp >= 30 else 0)
+    if category == "sandals":
+        return 2 if temp >= 24 else (-3 if temp < 16 else 0)
+    if category == "boots":
+        return 2 if temp <= 14 else (-2 if temp >= 28 else 0)
     return 0
 
 
